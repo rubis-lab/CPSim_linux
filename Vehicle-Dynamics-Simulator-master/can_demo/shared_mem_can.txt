@@ -1,0 +1,27 @@
+user_input[0]: acceleration
+user_input[1]: brake
+user_input[2]: left steer
+user_input[3]: right steer
+user_input[4]: steering mode - 0: road keeping, 1: lane keeping (default)
+
+
+torcs_output[0]: SCC trigger - 0: off, 1: on
+torcs_output[1]: LKAS trigger - 0: off, 1: on
+torcs_output[2]: current speed (x-axis)
+torcs_output[3]: steering value for lane keeping
+torcs_output[4]: engine RPM
+torcs_output[5]: yaw rate
+torcs_output[6]: distance from center of road
+torcs_output[7]: passed time from simulation start
+torcs_output[8]: target speed of SCC
+torcs_output[9]: accel value for cruise control
+
+
+***CAN messages***
+0x7FF: user_input[0], user_input[1]		// for CC actuation signal
+0x7FE: user_input[2], user_input[3]		// for LKAS actuation signal
+0x7FD: torcs_output[0], torcs_output[2]		// for CC sensing data
+0x7FC: torcs_output[1], torcs_output[3]		// for LKAS sensign data
+0x7FB: torcs_output[4], torcs_output[5]		// for plotting
+0x7FA: torcs_output[6], torcs_output[7]		// for plotting
+0x7EF: torcs_output[8], torcs_output[9]		// for CC sensing data
