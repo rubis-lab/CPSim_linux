@@ -1,4 +1,4 @@
-﻿# CPS-Sim Project
+# CPS-Sim Project
 CPS-Sim (Cyber-Physical System SIMulator) is a development tool which supports whole development process for CPSs from design to implementation.
 This tool provides two essential features for development process of CPSs:
 
@@ -48,3 +48,11 @@ If a software component uses data produced by or provides data to other componen
 After all settings are done, you can run simulator as right clicking background area and choosing “Run Simulator”.
 
 # How to Contribute
+
+# License
+
+# Reference
+[1] Kyoung-Soo We, Chang-Gun Lee, Junyung Lee, Kyuwon Kim, Kyongsu Yi, and Jong-Chan Kim, "ECU-in-the-Loop Real-Time Simulation Technique for Developing Integrated Vehicle Safety System", in International Conference on Control, Automation and Systems (ICCAS 2014), Gyeonggi-do, Korea, Oct 2014
+[2] Kyoung-Soo We, Jong-Chan Kim, Yuyeon Oh, Sangmin Jeong, and Chang-Gun Lee, "Demo Abstract: An Efficient and Easilly Reconfigurable Cyber-Physical Simulator", in International Conference on Cyber-Physical Systems (ICCPS 2013), Philadelphia, USA, Apr 2013
+[3] Jae-Hwa Han, Kyoung-Soo We, and Chang-Gun Lee, "WiP Abstract: Cyber Physical Simulations for Supporting Smooth Development from All-simulated Systems to All-real Systems", in International Conference on Cyber-Physical Systems (ICCPS'12), Beijing, China, Apr 2012
+[4] Kyoung-Soo We, Jong-Chan Kim, Yuyeon Oh, and Chang-Gun Lee, "An Efficient Simulated Job Execution Algorithm for Functionally and Temporally Correct Interactions between Simulated World and Real World", in Department of Computer Science and Engineering, Seoul National University, Nov. 2013
