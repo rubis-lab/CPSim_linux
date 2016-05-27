@@ -1,10 +1,8 @@
-﻿# D2A-CPSim Project
-D2A-CPSim (Design to Auto-implementation for CPS with SIMulator) project was started to support convenient developing process for CPSs developers.
-The tool implemented by this project provides extensive development environment from Design to Implementation.
-It has three key features:
-1. Functional-Temporal Co-Validation
+﻿# CPS-Sim Project
+CPS-Sim (Cyber-Physical System SIMulator) is a development tool which supports whole development process for CPSs from design to implementation.
+This tool provides two essential features for development process of CPSs:
+1. Functional/Temporal Co-Validation
 2. Smooth Migration
-3. Auto Implementation on ECU
 
 # Prerequisite
 Linux based PC (Ubuntu 12.04 LTS is recommended)
