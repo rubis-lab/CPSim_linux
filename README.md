@@ -5,7 +5,7 @@ This tool provides two essential features for development process of CPSs:
 1. Functional/Temporal Co-Validation
 2. Smooth Migration
 
-[![CPS-Sim Demo](https://github.com/rubis-lab/images/blob/master/pic1.png)](https://youtu.be/XfD0eenY6rQ "CPS-Sim Demo")
+[![CPS-Sim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/XfD0eenY6rQ "CPS-Sim Demo")
 
 # Prerequisite
 Linux based PC (Ubuntu 12.04 LTS is recommended)
