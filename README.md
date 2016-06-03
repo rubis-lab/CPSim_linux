@@ -17,7 +17,7 @@ You can get the driver at this link: http://www.peak-system.com/fileadmin/media/
 We recommend the version of 7.15.2(released at 29.07.2015).
 Also you can use this driver with the PCAN-USB and it can be purchased at http://www.peak-system.com/PCAN-USB.199.0.html?&L=1
 ##2. Install Eclipse
-##3. Add packages(git 폴더명 추가) to the folder “eclipse\dropins”
+##3. Add packages(Simulator/design/eclipse_packages/*.jar) to the folder “eclipse\dropins”
 ##4. Make a new workspace
 ##5. Copy the Simulator folder to the workspace that is created by #4
 ##6. Using “make” command, you can run the makefile which is a script file to compile the parser source file into executable file.
@@ -26,15 +26,13 @@ Also you can use this driver with the PCAN-USB and it can be purchased at http:/
 ##1. connect the Simulator PC which runs Simulator and the host PC which runs Torcs through PCAN-USB.
 The Simulator and Torcs can run at the same PC or at the seperated ones.
 If this step is skipped, simulation will be fail since the Simulator and Torcs cannot communicate with each other.
-##2. Run the System Configurator
-Run Eclipse.
-If a Workspace Launcher comes on, choose the workspace that is created during the install process.
------------System Configurator에 대한 상세 설명이 더 추가 되어야 함? JFreePlotter같은?
+##2. Run the system configurator
+Run eclipse with workspace that you chose in installing simulator.
 ##3. Create a New Project
-In order to validate a new system using D2A-CPSim, create a New Project as General.
-Now, you have to make “Configuration File” in Project folder.
+In order to validate a new system using CPS-Sim, create a new project as general.
+Now, you have to make “configuration file” in project folder.
 For this, right click the created project folder in the “Package Explore” tab.
-Create a file that has extension “hxml” in that project folder.
+Create a file that has extension “hxml”.
 ##4. Configure a whole system
 After the configuration file is created, you can find a CAN bus on the screen.
 When you move your mouse on the CAN bus and right click, you can add a car selecting the menu “Add Car”.
