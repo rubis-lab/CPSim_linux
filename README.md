@@ -1,11 +1,11 @@
-# CPS-Sim Project
-CPS-Sim (Cyber-Physical System SIMulator) is a development tool which supports whole development process for CPSs from design to implementation.
+# CPSim Project
+CPSim (Cyber-Physical System Simulator) is a development tool which supports whole development process for CPSs from design to implementation.
 This tool provides two essential features for development process of CPSs:
 
 1. Functional/Temporal Co-Validation
 2. Smooth Migration
 
-[![CPS-Sim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/XfD0eenY6rQ "CPS-Sim Demo")
+[![CPSim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/XfD0eenY6rQ "CPSim Demo")
 
 # Prerequisite
 Linux based PC (Ubuntu 12.04 LTS is recommended)
@@ -29,7 +29,7 @@ If this step is skipped, simulation will be fail since the Simulator and Torcs c
 ##2. Run the system configurator
 Run eclipse with workspace that you chose in installing simulator.
 ##3. Create a New Project
-In order to validate a new system using CPS-Sim, create a new project as general.
+In order to validate a new system using CPSim, create a new project as general.
 Now, you have to make “configuration file” in project folder.
 For this, right click the created project folder in the “Package Explore” tab.
 Create a file that has extension “hxml”.
