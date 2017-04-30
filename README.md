@@ -28,33 +28,33 @@ Also you can use this driver with the PCAN-USB and it can be purchased at http:/
 ##6. Using “make” command, you can run the makefile which is a script file to compile the parser source file into executable file.
 
 # Quick Start
-##1. connect the Simulator PC which runs Simulator and the host PC which runs Torcs through PCAN-USB.
-The Simulator and Torcs can run at the same PC or at the seperated ones.
-If this step is skipped, simulation will be fail since the Simulator and Torcs cannot communicate with each other.
+##1. Connect the simulation PC which runs CPSim and the host PC which runs Torcs through PCAN-USB.
+CPSim and Torcs can run at the same PC or at the seperated ones.
+If this step is skipped, simulation will be fail since CPSIM and Torcs cannot communicate with each other.
 
-##2. Run the system configurator
-Run eclipse with workspace that you chose in installing simulator.
+##2. Run the system configurator, that is,
+run eclipse with workspace that you chose in installing simulator.
 
-##3. Create a New Project
+##3. Create a New Project.
 In order to validate a new system using CPSim, create a new project as general.
-Now, you have to make “configuration file” in project folder.
+Now, you have to make “configuration file” in the project folder.
 For this, right click the created project folder in the “Package Explore” tab.
-Create a file that has extension “hxml”.
+Then, create a file that has extension “hxml”.
 
-##4. Configure a whole system
+##4. Configure a whole system.
 After the configuration file is created, you can find a CAN bus on the screen.
 When you move your mouse on the CAN bus and right click, you can add a car selecting the menu “Add Car”.
 Similarly, if you choose the menu “Add ECU” or “Remove ECU”, you can add an ECU on the system or remove from the system.
-Moreover, if you right click on the ECU and choose the “Add SWC”, you can add a software component. 
+Moreover, if you right click on the ECU and choose the “Add SWC”, you can add a task.
 Each component can be placed anywhere by dragging.
 
-##5. Describe specific properties
-After configuring a whole system briefly, like step 3, describe properties of each software component.
+##5. Describe specific properties.
+After configuring a whole system briefly, like step 3, describe task properties including timing parameters.
 If you click on the one of the SWC, “Properties” tab might be shown at the right side of the screen.
-In this tap, you can set various properties such as ‘periodic’, ‘deadline’, ‘worst case execution time’, etc.
-If a software component uses data produced by or provides data to other component, it can be set as ‘Recv from’ or ‘Send to’ property.
+In this tap, you can set various parameters such as ‘period’, ‘deadline’, ‘worst case execution time’, etc.
+If a task uses data produced by or provides data to other component, it can be set as ‘Recv from’ or ‘Send to’ property.
 
-##6. Run Simulator
+##6. Run Simulator.
 After all settings are done, you can run simulator as right clicking background area and choosing “Run Simulator”.
 
 # How to Contribute
