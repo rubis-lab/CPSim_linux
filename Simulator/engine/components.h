@@ -1,173 +1,68 @@
 #ifndef __COMPONENTCLASSH_
 #define __COMPONENTCLASSH_
 
+#define LINUX_MODE
+#define DEBUG_MODE		0
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <list>
+#include <algorithm>
 #include <math.h>
+
+#ifdef LINUX_MODE
+#include <sys/time.h>
+#include <unistd.h>
+#endif
 
 #define RAND_RANGE(a,b) (((float)rand()/(float)RAND_MAX)*((float)b-(float)a)+(float)a)
 #define MAX_INT 0x7fffffff
 
 #define TASK(X) {Task##X}
 
-#define MAX_RESOURCES 100
-#define MAX_TASKS 1000
+#define MAX_RESOURCES		100
+#define MAX_TASKS			1000
+#define MAX_TASKS_ON_ECU	100
 
-#define PERIOD 0
-#define DEADLINE 1
-
-#define FIXED 0
-#define DYNAMIC 1
-
-#define NON_PREEMPTABLE 0
-#define PREEMPTABLE 1
-
-enum {START, COMPLETE, RESUMED};
-enum {RM, DM, EDF, CPS};	// for scheduling policy
+#define MAX_PRIORITY		1000
 
 using namespace std;
 
 class Component;
-class Scheduler;
 class Resource;
 class Task_info;
-class Event;
-class Task;
+class Job;
+class Node;
+class Scheduler_Universal;
+class DAG;
 
-/* Component class
- * This is a super class of Resource, Task_info class
- */
 class Component
 {
-protected:
+public:
 	int id;
 
-public:
 	Component();
 	Component(int);
 	~Component();
-	int get_id();
-	void set_id(int);
 };
 
-/* for schedule plotting */
-class Time_plot
-{
-private:
-	int is_start;				// 1: start, 0: end, some value for response time
-	unsigned long long time;	// time
-	int task_num;				// task number
-	char task_name[20];			// task name
-	char resource_name[20];		// resource name
-
-public:
-	Time_plot();
-	Time_plot(int, unsigned long long, int);
-	Time_plot(int, unsigned long long, int, char*, char*);
-	~Time_plot();
-
-	int get_is_start();
-	unsigned long long get_time();
-	int get_task_num();
-	char* get_task_name();
-	char* get_resource_name();
-};
-
-/* Scheduler class
- * This class is for event-driven scheduler
- */
-class Scheduler
-{
-private:
-	int p_policy;			// priority assign policy. 0: fixed, 1: dynamic
-	int p_standard;			// standard for priority setting. 0: period, 1: deadline
-	int preemptable;		// preemption in execution. 1: preemptable, 0: non-preemptable
-	int componentizing;		// componentizing (optional). 0: not componentized, 1: componentized
-	int current_time;		// time that schedule have been created until now
-
-protected:
-	void modify_time(list<Event*>*, int);
-	void resort(list<Event*>*);
-	void process_completion(list<Event*>*, Event*, int, list<Time_plot *>*);
-	void add_time_plot(int, unsigned long long, Event*, list<Time_plot *>*);
-
-public:
-	Scheduler();
-	Scheduler(int, int, Resource*);
-	~Scheduler();
-
-	void insert_event(list<Event*>*, Event*);
-
-	int get_p_policy();
-	int get_p_standard();
-	int get_preemptable();
-	int get_componentizing();
-	int get_current_time();
-	void set_current_time(int);
-	int extract_schedule(int, int, list<Time_plot *>*);
-	void set_priority();
-
-	Resource *resource_link;
-	vector<Task_info*> tasks;
-
-	list<Event*> log;			// event log for over time window
-	list<Event*> log2;			// event log for current time window (use for setting release time)
-	list<Event*> log3;			// event log who has start events only (use for setting deadline)
-};
-
-/* Event class
- * This class denotes an event in the scheduler
- * An event consists of three kinds of behaviors, i.e., start, completion, resume.
- */
-class Event
-{
-private:
-	int task_id;	// task id
-	int job_id;		// job id who create this event
-	int type;		// event type. 0: start, 1: completion, 2: resumed
-	int time;		// time when this event occur
-	int remaining_time;	// remaining execution time of this job
-
-public:
-	Event();
-	Event(int, int, int, Task_info*, Task*);
-	~Event();
-
-	Task_info *task_info_link;
-	Task *task_link;
-
-	int get_task_id();
-	int get_job_id();
-	int get_type();
-	int get_time();
-	int get_remaining_time();
-	void set_task_id(int);
-	void set_job_id(int);
-	void set_type(int);
-	void set_time(int);
-	void set_remaining_time(int);
-};
-
-/* Resource class
- * This class is a super class of all resources such as ECU, CAN
- * Each resource has its own scheduler.
- */
 class Resource : public Component
 {
-private:
+public:
 	int type;		// 1: processor, 2: network
 	int ratio;		// performance ratio. maximum: 100, minimum: 1
 	int speed;		// clock (MHz) or baud rate (kbps)
 	char resource_name[20];
 
-public:
 	Resource();
 	Resource(int, int, int, int, char*);
 	~Resource();
 
-	Scheduler *scheduler_link;
+	Scheduler_Universal *scheduler_link;
 
 	int get_type();
 	int get_ratio();
@@ -175,17 +70,17 @@ public:
 	char* get_resource_name();
 };
 
-/* Task Info class
- * This class describes task's static properties such as period, worst-case execution time, etc.
- * Also this class has links to its own jobs
- */
 class Task_info : public Component
 {
-private:
+public:
 	int type;				// 0: computation, 1: communication
+	int hw_id;				// id of actual HW which executes this task
 	int period;
-	int wcet;				// wcet on the target processor (on the ECU)
-	int modified_wcet;		// wcet on the host processor (on the simulator)
+	int bcet_ECU;				// bcet on the target processor (on the ECU)
+	int wcet_ECU;				// wcet on the target processor (on the ECU)
+	int modified_rate;		// relative ratio between the execution time on the ECU and the execution time on PC
+	int bcet_PC;		// bcet on the host processor (on the simulator)
+	int wcet_PC;		// wcet on the host processor (on the simulator)
 	int phase;
 	int visible;			// 0: invisible, 1: visible
 	int is_read;
@@ -197,121 +92,188 @@ private:
 	int next_job_id;
 	char task_name[20];
 
-public:
 	Task_info();
-	Task_info(int, int, int, int, int, int, int, int, int, int, int, char*, Scheduler*);
+	Task_info(int, int, int, int, int, int, int, int, int, int, int, int, int, char*);
 	~Task_info();
 
-	Scheduler *scheduler_link;
-
 	// data dependency
-	vector<Task_info*> successors;		// task level successor
-	vector<Task_info*> predecessors;	// task level predecessor
+	vector<Task_info*> successors;
+	vector<Task_info*> predecessors;
 
-	list<Task*> task_instances;		// links to jobs
-
-	int get_type();
-	int get_period();
-	int get_wcet();
-	int get_modified_wcet();
-	int get_phase();
-	int get_visible();
-	int get_is_read();
-	int get_is_write();
-	int get_r_deadline();
-	int get_priority();
-	int get_a_deadline();
-	int get_next_release_time();
-	int get_next_job_id();
-	char* get_task_name();
-	void set_visible(int);
-	void set_priority(int);
-	void set_a_deadline(int);
-	void set_next_release_time(int);
 	void job_id_increase();		// increase next job id
-	Task* find_task(int);
 };
 
-
-/* Task class
- * This class describes task's dynamic properties such as release time, absolute deadline, etc.
- * A task's job is an instanse of this class
- */
-class Task : public Component
+// event-driven scheduler
+class Scheduler_Universal
 {
-protected:
+public:
+	unsigned int num_tasks;
+	int policy;				// 0: RM, 1: DM, 2: EDF
+	int is_preemptible;		// 0: not preemptible, 1: preemptible
+	int hyper;				// hyperperiod of tasks
+	vector<Task_info*> tasks;
+	vector<list<Node*> > node_list;
+
+	Scheduler_Universal();
+	Scheduler_Universal(int policy_input, int is_preemptible_input);
+	Scheduler_Universal(int policy_input, int is_preemptible_input, vector<Task_info*> tasks_input, vector<list<Node*> > node_list_input);
+	~Scheduler_Universal();
+
+	void add_task(Task_info *t);
+	void generate_nodes(int start_time, int end_time);
+	void set_priority(int policy);
+	void generate_schedule(int best_worst, int is_preemptible = 1);
+	int get_WCBP_start(Node *target);
+	void get_S_set(Node *target);
+	void get_F_set(Node *target);
+	void get_sets_for_all_nodes();
+	void do_schedule_initial(int start_time, int end_time);
+};
+
+class Node
+{
+public:
+	int is_virtual;
 	int job_id;
 	int release_time;
-	int a_deadline;
+	int release_time_PC;
+	int deadline_ECU;
+	int remaining_time_ECU;
+	int remaining_time_PC;
+	int priority;
+	int start_time_ECU;
+	int finish_time_ECU;
+	int actual_execution_time_ECU;
+	int actual_execution_time_PC;
+	int min_start_time_ECU;
+	int min_finish_time_ECU;
+	int max_start_time_ECU;
+	int max_finish_time_ECU;
+	int start_time_PC;
+	int finish_time_PC;
 	int effective_deadline;
-	int effective_release_time;
-	int is_waiting;				// is waiting or not
-	unsigned long long start_time;		// actual time when this job starts its execution
-	unsigned long long completion_time;	// actual time when this job completes its execution
+	int is_executed;
+	int is_all_precedence_set;			// is this newly added in OJPG?
+	int is_deadline_updated;
 
-public:
-	Task();
-	Task(Task_info*);
-	Task(int, int);
-	Task(int, int, Task_info*);
-	Task(int, int, int, int, Task_info*);
-	~Task();
+	Task_info *task;
 
-	Task_info *task_link;
+	list<Node*> predecessors;	// deterministic predecessors
+	list<Node*> successors;		// deterministic successors
+	list<Node*> non_deterministic_predecessors;		// non deterministic predecessors
+	list<Node*> non_deterministic_successors;		// non deterministic successors
+	vector<Node*> S_set;
+	vector<Node*> F_set;
+	vector<Node*> P_set;
 
-	// data dependency
-	vector<Task*> predecessors;		// job level predecessor
-	vector<Task*> successors;		// job level successor
-
-	virtual void read() = 0;
-	virtual void procedure() = 0;
-	virtual void write() = 0;
-
-	int get_job_id();
-	int get_release_time();
-	int get_a_deadline();
-	int get_effective_deadline();
-	int get_effective_release_time();
-	int get_is_waiting();
-	unsigned long long get_start_time();
-	unsigned long long get_completion_time();
-
-	void set_job_id(int);
-	void set_release_time(int);
-	void set_a_deadline(int);
-	void set_effective_deadline(int);
-	void set_effective_release_time(int);
-	void set_waiting();
-	void set_start_time(unsigned long long);
-	void set_completion_time(unsigned long long);
+	Node(Task_info *t, int j_id, int r_time, int d);
+	Node(int v, Node *target_node);	// virtual value
+	Node(Node *target_node);		// copy node
+	Node(Node *target_node, int j_id);	// make node with suitable job id
+	~Node();
 };
 
-/* Plan class
- * This class serializes all generated events in Scheduler classes for executing a single-core processor
- */
-class Plan
+class DAG
 {
-private:
-	void set_effective_release_time(vector<Resource*>*, vector<Task_info*>*);
-	void set_effective_deadline(vector<Resource*>*);
+protected:
+	int check_is_successor(int is_deterministic, Node *pre, Node *succ);	// check whether succ is successor of pre or not
+
+	// is_deterministic 1: deterministic relation
+	// return 1: newly set, 0: already set
+	int set_precedence_relation(int is_deterministic, Node *pre, Node *succ);
+	void case1(Node *target);	// physical-read constraint
+	void case2(Node *target);	// physical-write constraint
+	void case3(int send_index, Node *target);	// producer-consumer constraint
+
+	// find a node in target_dag with task_id, job_id.
+	// target_dag 0: offline guider, 1: OJPG
+	// if there isn't a node, then NULL is returned.
+	Node* find_node(int target_dag, int task_id, int job_id);
+
+	int get_ref_job_id(int task_id, int job_id);
 
 public:
-	Plan();
-	~Plan();
+	DAG(vector<Task_info*> t, vector<Resource*> r, int h);
+	~DAG();
 
-	void generate_plan(vector<Resource*>*, vector<Task_info*>*);
+	int hyper_period;
+	vector<int> number_of_jobs_in_hyperperiod;
+	vector<Task_info*> task_list;
+	vector<list<Node*> > node_list;			// offline guider
+	vector<list<Node*> > OJPG;
+	list<Node*> deadline_updatable;
+	list<Node*> link_updatable;
+
+	// find a terminal node of target
+	// if there isn't a node, then NULL is returned.
+	Node* find_virtual_node(Node *target);
+	void convert_determinitic(Node *pre, Node *succ);
+	void unset_precedence_relation(int is_deterministic, Node *pre, Node *succ);
+	void generate_offline_guider();	// generate the offline guider
+	void generate_initial_OJPG();
+	void unlink_node_in_OJPG(Node *target);	// unlink target and target's successors
+	int is_node_in_OJPG(int task_id, int job_id);
+	Node* max_jobs_in_F_set(Node *target, int start_index, int end_index);
+
+	// add a new node to OJPG with task_id, job_id
+	// multiple jobs may be added if job_id is big
+	// return a node who has task_id, job_id
+	Node* add_new_node_into_OJPG(int task_id, int job_id);
+
+	// set default precedence relations recursively
+	void set_default_precedence_relations(Node *target);
+
+	void push_job_for_update_deadline(Node *target);
+	void push_job_for_update_link(Node *target);
+
+	// remove executed job and add a new job after hyper period
+	void pop_and_push_node(Node *executed, int is_push = 1);
 };
 
-/* Execution class
- * This class is responsible for actual executions of tasks in the simulator
- */
 class Execution
 {
+protected:
+	int cur_time;
+	int end_time;
+
+	// update effective deadline for target
+	// return 0: not updated, 1: updated
+	int update_deadline_for_each_node(Node *target);
+
+	int all_successor_updated(Node *target);
+	void update_deadlines_optimized();
+	void update_deadlines_revised();
+	void update_deadlines();
+	Node* get_the_first_node();
+	int get_nearest_start_time();
+	int check_all_predecessors_executed(Node *target);
+	void find_index_same_hw_id(int hw_id, int *start, int *end);
+	void emulate_schedule(int best_worst, Node *target);
+	void update_start_finish_time(Node *executed);
+	void adjust_non_deterministic(Node *target);
+
+#ifdef LINUX_MODE
+	void update_time(int index);
+#endif
+
 public:
-	Execution();
+	Execution(int e_time, DAG *d, vector<Resource*> r);
 	~Execution();
 
-	Task* get_next_job(int, vector<Task_info*>*);
+	DAG* dag;
+	vector<Resource*> resources;
+	list<Node *> ready_queue;
+
+#ifdef LINUX_MODE
+	unsigned int elapsed_time[5];
+	unsigned int times[5];
+	struct timeval start_time_measure, end_time_measure;
+#endif
+
+	// execute nodes on PC
+	// return 1: simulatable, 0: not simulatable
+	int execute_nodes_on_PC();
 };
+
 
 #endif
