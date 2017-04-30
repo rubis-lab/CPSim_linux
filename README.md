@@ -9,7 +9,7 @@ This tool provides two essential features for development process of CPSs:
 
 # Prerequisite
 Linux based PC (Ubuntu 12.04 LTS is recommended)
-PCAN-USB (PEAK-System): this device is used to communicate between the simulator and the torcs.. 
+PCAN-USB (PEAK-System): this device is used to communicate between the simulator and the torcs. 
 
 # How to Install for Linux
 ##1. Install the PCAN-USB driver
