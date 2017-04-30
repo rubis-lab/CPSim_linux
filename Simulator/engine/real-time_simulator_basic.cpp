@@ -7,6 +7,7 @@
 
 #define TIME_WINDOW	1000000		// us
 #define OVER_TIME 1000000		// us
+#define HYPER 1;		// number of hyperperiod
 
 #define LOCATION "~/"	// path for log
 
@@ -20,7 +21,7 @@ int num_resources = 0;
 int num_tasks = 0;
 vector<Resource*> resources;
 vector<Task_info*> whole_tasks;
-Plan *plan;
+DAG *dag;
 Execution *execution;
 
 int current_time = 0;		// simulation time (us)
@@ -38,31 +39,14 @@ float memory_buffer[10];
 pthread_mutex_t section_for_sending = PTHREAD_MUTEX_INITIALIZER;
 list<CAN_Msg *> waiting_data;
 
-// data structure for schedule plotting
-pthread_mutex_t section_for_waiting = PTHREAD_MUTEX_INITIALIZER;
-list<Time_plot *> waiting_plot;
-int recent_time = 0;	// time when can packet was sent recently
-
-// data structure for response time plotting
-pthread_mutex_t section_for_response = PTHREAD_MUTEX_INITIALIZER;
-list<Time_plot *> response_plot;
-
-// for real-time plotting
-unsigned long long passed_time = 0;
-FILE *acc, *str, *spd, *rpm, *yaw;
-FILE *fp_chart, *fp_serial;
-FILE *response_chart[MAX_TASKS];
-
 // for infinite looping
 int loop_condition = 1;
 
 // for CAN
 HANDLE hCAN1;
-HANDLE hCAN2;
 
 void initialize();
 void init_CAN(int num_channel);
-void initialize_for_plotting();
 unsigned long long getcurrenttime();
 void wait(unsigned long long to);
 void* receive_CAN_thread(void *arg);
@@ -72,6 +56,7 @@ void try_write_for_line_plot();
 void try_write_for_response_plot();
 void program_complete();
 void add_time_plot(Task *task, list<Time_plot *> *plot);
+int calculate_hyper_period(unsigned int start_index, unsigned int size);
 
 // main function
 int main(int argc, char* argv[])
@@ -79,11 +64,8 @@ int main(int argc, char* argv[])
 	// create resources, schedulers, tasks and set parameters
 	initialize();
 
-	// set CAN connection
+	// set CAN connection for one channel
 	init_CAN(1);
-
-	// initialize for plotting
-	initialize_for_plotting();
 
 	// create recv thread
 	pthread_t hThread;
@@ -104,46 +86,101 @@ int main(int argc, char* argv[])
 	unsigned long long actual_start_time = 0;
 
 	// main loop
+	while(!execution->ready_queue.empty())
+	{
+		int next_release_of_executed_job = 0;
+
+		// pick the first node
+		// (1) pick a job in the simulation ready queue
+		Node *cur_node = get_the_first_node();
+
+		if(cur_node == NULL)	// no job. then jump
+		{
+			int min_release = get_nearest_start_time();			// get the nearest start time
+			cur_time = min_release;			// set cur_time to min_release
+			continue;
+		}
+
+		// first start of this job
+		if(cur_node->remaining_time_PC == cur_node->actual_execution_time_PC)		// start time of this node
+			cur_node->start_time_PC = cur_time;
+
+		// get start time of a job who can delay cur_node
+		int next_time = get_nearest_start_time();
+
+		if(cur_node->remaining_time_PC <= (next_time-cur_time))		// this node can complete
+		{
+			cur_time += cur_node->remaining_time_PC;	// cur_time increases
+			cur_node->remaining_time_PC = 0;
+			cur_node->actual_execution_time_ECU = cur_node->actual_execution_time_PC*100/cur_node->task->modified_rate;
+			cur_node->is_executed = 1;
+			cur_node->finish_time_PC = cur_time;		// finish time update
+			next_release_of_executed_job = cur_node->release_time + dag->hyper_period;
+
+			// simulatability check
+			if(cur_node->is_virtual == 1 && cur_node->finish_time_PC > cur_node->min_finish_time_ECU)
+				return 0;	// not simulatable
+
+			// pop this job on the ready queue
+			ready_queue.remove(cur_node);
+
+			// clear jobs whose deadline would be changed
+			dag->deadline_updatable.clear();
+
+			// gather who can be in ready queue after cur_node is executed
+			list<Node*> ready_candidates;
+			list<Node*>::iterator pos;
+			for(pos = cur_node->successors.begin(); pos != cur_node->successors.end(); pos++)
+				ready_candidates.push_back(*pos);
+			for(pos = cur_node->non_deterministic_successors.begin(); pos != cur_node->non_deterministic_successors.end(); pos++)
+				ready_candidates.push_back(*pos);
+			
+
+			// kswe. (2) add a now job into OJPG
+			if(next_release_of_executed_job >= end_time)
+				dag->pop_and_push_node(cur_node, 0);
+			else
+				dag->pop_and_push_node(cur_node);
+			
+			// kswe. (3) update start, finish times
+			update_start_finish_time(cur_node);
+
+			// kswe. (4) adjust non-determinism
+			for(pos = dag->link_updatable.begin(); pos != dag->link_updatable.end(); pos++)
+				adjust_non_deterministic(*pos);
+
+			// kswe. (5) update effective deadlines
+			update_deadlines_optimized();
+
+			// update ready queue
+			for(pos = ready_candidates.begin(); pos != ready_candidates.end(); pos++)
+			{
+				if((*pos)->predecessors.empty())
+					ready_queue.push_back(*pos);
+			}
+		}
+		else
+		{
+			cur_node->remaining_time_PC -= (next_time-cur_time);	// remaining time decreases
+			cur_time += (next_time-cur_time);					// cur_time increases
+		}
+	}
+
+	// main loop
 	while(loop_condition == 1)
 	{
 		// try sending data
 		try_send_data_via_can(fp_chart);
-
-		// try writing for schedule plot
-		try_write_for_schedule_plot(fp_chart);
-
-		// try writing for line plot
-		try_write_for_line_plot();
-
-		// try writing for response plot
-		try_write_for_response_plot();
 
 		int current_time_temp = current_time;
 
 		// increase simulation time
 		current_time += TIME_WINDOW;
 
-		// create expected schedule for each resource
-		for(unsigned int i = 0; i < resources.size(); i++)
-		{
-			resources[i]->scheduler_link->extract_schedule(current_time, OVER_TIME, &waiting_plot);
-		}
-
-		// optimize waiting jobs with considering effective release time and deadline
-		plan->generate_plan(&resources, &whole_tasks);
 		while(loop_condition == 1)
 		{
 			// try sending data
 			try_send_data_via_can(fp_chart);
-
-			// try writing for schedule plot
-			try_write_for_schedule_plot(fp_chart);
-
-			// try writing for line plot
-			try_write_for_line_plot();
-
-			// try writing for response plot
-			try_write_for_response_plot();
 
 			// get next executable job
 			next = execution->get_next_job(current_time_temp, &whole_tasks);
@@ -155,28 +192,12 @@ int main(int argc, char* argv[])
 				do
 				{
 					try_send_data_via_can(fp_chart);
-					try_write_for_schedule_plot(fp_chart);
-					try_write_for_line_plot();
-					try_write_for_response_plot();
 				} while(next->get_effective_release_time() > getcurrenttime());
 			}
 
 			// calculate expected start and end time
 			actual_start_time = current_time_temp;
 			expected_end_time = actual_start_time + next->task_link->get_modified_wcet();
-
-			// print seriaized schedule (start)
-			task_name = next->task_link->get_task_name();
-			resource_name = next->task_link->scheduler_link->resource_link->get_resource_name();
-			is_start = 1;
-			time_print = actual_start_time/1000;
-			fprintf(fp_serial, "%d, %s: %s, %d\n", time_print, resource_name, task_name, is_start);
-			fflush(fp_serial);
-
-			// push response time for plotting
-			pthread_mutex_lock(&section_for_response);
-			add_time_plot(next, &response_plot);
-			pthread_mutex_unlock(&section_for_response);
 
 			// jump simulation time into this job's release time
 			if(next->task_link->get_is_read() == 1 && current_time_temp < next->get_effective_release_time())
@@ -189,30 +210,17 @@ int main(int argc, char* argv[])
 			next->procedure();
 			next->write();
 
-			// print seriaized schedule
-			task_name = next->task_link->get_task_name();
-			resource_name = next->task_link->scheduler_link->resource_link->get_resource_name();
-			is_start = 0;
-			time_print = expected_end_time/1000;
-			fprintf(fp_serial, "%d, %s: %s, %d\n", time_print, resource_name, task_name, is_start);
-			fflush(fp_serial);
-
 			delete next;
 
 			// wait during modified wcet
 			do
 			{
 				try_send_data_via_can(fp_chart);
-				try_write_for_schedule_plot(fp_chart);
-				try_write_for_line_plot();
-				try_write_for_response_plot();
 			} while(expected_end_time > getcurrenttime());
 		}
 	}
 
 	// uninitialize phase
-	fclose(fp_chart);
-	fclose(fp_serial);
 	CAN_Close(hCAN1);
 	CAN_Close(hCAN2);
 	getchar();
@@ -230,13 +238,31 @@ void initialize()
 	num_resources = resources.size();
 	num_tasks = whole_tasks.size();
 
-	// set priority for fixed priority task sets
-	for(int i = 0; i < num_resources; i++)
-		resources[i]->scheduler_link->set_priority();
+	int hyper_period = calculate_hyper_period(0, whole_tasks.size());
+
+	// generate nodes' list for two hyper_period
+	// get S-set, F-set for all jobs
+	for(unsigned int i = 0; i < resources.size(); i++)
+		resources[i]->scheduler_link->do_schedule_initial(0, 2*hyper_period);
+
+	// generate offline guider
+	dag = new DAG(whole_tasks, resources, hyper_period);
+	dag->generate_offline_guider();
+
+	// generate the initial OJPG
+	dag->generate_initial_OJPG();
 
 	// ready for plan and execution
-	plan = new Plan();
-	execution  = new Execution();
+	int target_period = hyper_period * HYPER;
+	execution = new Execution(target_period, dag, resources);
+	execution->update_deadline();
+
+	// set initial jobs in the ready queue
+	for(int i = 0; i < num_tasks; i++)
+	{
+		if(dag->OJPG[i].front()->predecessors.empty())
+			execution->ready_queue.push_back(dag->OJPG[i].front());
+	}
 
 	// for data from car
 	for(int i = 0; i < 10; i++)
@@ -290,84 +316,6 @@ void init_CAN(int num_channel)
 			return;
 		}	
 	}
-}
-
-/* This function initializes the files for plotting.
- */
-void initialize_for_plotting()
-{
-	char file_name[100];
-
-	// for data plotting
-	sprintf(file_name, "%sacceleration.txt", LOCATION);
-	acc = fopen(file_name, "w");
-	sprintf(file_name, "%ssteering.txt", LOCATION);
-	str = fopen(file_name, "w");
-	sprintf(file_name, "%sspeed.txt", LOCATION);
-	spd = fopen(file_name, "w");
-	sprintf(file_name, "%srpm.txt", LOCATION);
-	rpm = fopen(file_name, "w");
-	sprintf(file_name, "%syaw.txt", LOCATION);
-	yaw = fopen(file_name, "w");
-
-	// for expected schedule plotting
-	sprintf(file_name, "%sinternal.log", LOCATION);
-	fp_chart = fopen(file_name, "w");
-	fprintf(fp_chart, "%s: %s", whole_tasks[0]->scheduler_link->resource_link->get_resource_name(), whole_tasks[0]->get_task_name());
-	if(whole_tasks[0]->get_is_write() == 1)
-		fprintf(fp_chart, ", msg: %s", whole_tasks[0]->get_task_name());
-	for(unsigned int i = 1; i < whole_tasks.size(); i++)
-	{
-		fprintf(fp_chart, ", %s: %s", whole_tasks[i]->scheduler_link->resource_link->get_resource_name(), whole_tasks[i]->get_task_name());
-		if(whole_tasks[i]->get_is_write() == 1)
-			fprintf(fp_chart, ", msg: %s", whole_tasks[i]->get_task_name());
-	}
-	fprintf(fp_chart, "\n");
-	fflush(fp_chart);
-
-	// for serialized schedule plotting
-	sprintf(file_name, "%sserial.log", LOCATION);
-	fp_serial = fopen(file_name, "w");
-	fprintf(fp_serial, "%s: %s", whole_tasks[0]->scheduler_link->resource_link->get_resource_name(), whole_tasks[0]->get_task_name());
-	for(unsigned int i = 1; i < whole_tasks.size(); i++)
-		fprintf(fp_serial, ", %s: %s", whole_tasks[i]->scheduler_link->resource_link->get_resource_name(), whole_tasks[i]->get_task_name());
-	fprintf(fp_serial, "\n");
-	fflush(fp_serial);
-
-	// for response time plotting
-	for(int i = 0; i < num_tasks; i++)
-	{
-		sprintf(file_name, "%stask%d.txt", LOCATION, i);
-		response_chart[i] = fopen(file_name, "w");
-	}
-
-	// for config.txt
-	sprintf(file_name, "%sconfig.txt", LOCATION);
-	FILE *fp_config = fopen(file_name, "w");
-	FILE *fp_original = fopen("config_original.txt", "r");
-	char line[1000];
-	fgets(line, 1000, fp_original);		// size
-	fprintf(fp_config, "size=%d\n", num_tasks+5);
-	while(fgets(line, 1000, fp_original) != NULL)
-		fprintf(fp_config, "%s", line);
-	char *task_n;
-	int max_y;
-	for(int i = 0; i < num_tasks; i++)		// print each task
-	{
-		task_n = whole_tasks[i]->get_task_name();
-		fprintf(fp_config, "\ntitle=%s\n", task_n);
-		fprintf(fp_config, "filename=task%d.txt\nlabel=response time\nunit=ms\n", i);
-		max_y = whole_tasks[i]->get_period()*1.5;
-		fprintf(fp_config, "minY=0\nmaxY=%d\n", max_y/1000);
-		fprintf(fp_config, "tickUnit=0.5\nxRange=1.0\ndataNum=1\n");	// tick unit, x range, data num
-		fprintf(fp_config, "%s\n", task_n);		// legend
-		if(strstr(task_n, "dummy") != NULL)		// if dummy, not visible
-			fprintf(fp_config, "visible=0\n");
-		else
-			fprintf(fp_config, "visible=0\n");
-	}
-	fclose(fp_original);
-	fclose(fp_config);
 }
 
 // This function gets the current time from the start of simulation as micro sec.
@@ -479,104 +427,26 @@ void try_send_data_via_can(FILE *fp)
 	}
 }
 
-/* This function tries to write the current states to files for plotting schedule behaviors.
- */
-void try_write_for_schedule_plot(FILE *fp)
+int calculate_hyper_period(unsigned int start_index, unsigned int size)
 {
-	Time_plot *aa;
-
-	if(waiting_plot.empty())
-		return;
-
-	while(waiting_plot.front()->get_time() < getcurrenttime())
+	if(size <= 0)
+		return 0;
+	int lcm = whole_tasks[start_index]->period/1000;
+	for(unsigned int i = start_index+1; i < start_index+size; i++)
 	{
-		aa = waiting_plot.front();
-		int time = aa->get_time()/1000;
-		char *task_name = aa->get_task_name();
-		char *resource_name =  aa->get_resource_name();
-		int is_start = aa->get_is_start();
-		fprintf(fp, "%d, %s: %s, %d\n", time, resource_name, task_name, is_start);
-		fflush(fp);
-		waiting_plot.pop_front();
-		delete aa;
-	}
-}
-
-/* This function tries to write the current values to files for plotting values of variables.
- */
-void try_write_for_line_plot()
-{
-	if(passed_time > getcurrenttime())
-		return;
-
-	unsigned long long temp_time = getcurrenttime();
-	int sec = temp_time/1000000;
-	int usec = temp_time%1000000;
-
-	passed_time += 100000;		// 100 ms
-
-		fprintf(acc, "%d.%06d %f\n", sec, usec, user_input[ACCELERATION]);
-		fprintf(str, "%d.%06d %f\n", sec, usec, user_input[STEER]);
-		fprintf(spd, "%d.%06d %f\n", sec, usec, car_output[SPEED]);
-		fprintf(rpm, "%d.%06d %f\n", sec, usec, car_output[RPM]);
-		fprintf(yaw, "%d.%06d %f\n", sec, usec, car_output[YAW_RATE]);
-
-	fflush(acc);
-	fflush(str);
-	fflush(spd);
-	fflush(rpm);
-	fflush(yaw);
-}
-
-/* This function tries to write the current response times of tasks to files for plotting response times.
- */
-void try_write_for_response_plot()
-{
-	Time_plot *aa;
-	int sec, usec;
-	if((!response_plot.empty()) && (response_plot.front()->get_time() < getcurrenttime()))
-	{
-		aa = response_plot.front();
-		response_plot.pop_front();
-		int time = aa->get_time();
-		int is_start = aa->get_is_start()/1000;
-		sec = time/1000000;
-		usec = time%1000000;
-		fprintf(response_chart[aa->get_task_num()], "%d.%06d %d\n", sec, usec, is_start);
-		fflush(response_chart[aa->get_task_num()]);
-		delete aa;
-	}
-}
-
-/* This function adds Time_plot class for a Task class.
- * In this function, all Time_plot class is sorted in time order.
- * This function is used for measuring response times of tasks
- * 
- * <argument>
- * task: target job
- * plot: list for Time_plot class
- */
-void add_time_plot(Task *task, list<Time_plot *> *plot)
-{
-	Time_plot *t = new Time_plot(task->get_completion_time()-task->get_release_time(), task->get_completion_time(), task->get_id());
-	if(plot->empty())
-	{
-		plot->push_back(t);
-	}
-	else
-	{
-		int flag = 0;
-		list<Time_plot*>::iterator pos;
-		for(pos = plot->begin(); pos != plot->end(); pos++)
+		int temp1 = lcm;
+		int temp2 = whole_tasks[i]->period/1000;
+		int num1 = temp1;
+		int num2 = temp2;
+		while(num1 != num2)
 		{
-			if((*pos)->get_time() > t->get_time())
-			{
-				plot->insert(pos, t);
-				flag = 1;
-				break;
-			}
+			if(num1 > num2)
+				num1 = num1 - num2;
+			else
+				num2 = num2 - num1;
 		}
-		if(flag == 0)
-			plot->push_back(t);		// push target to the last position
+		lcm = (temp1*temp2)/num1;
 	}
+	return lcm*1000;
 }
+
