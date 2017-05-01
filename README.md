@@ -8,8 +8,8 @@ This tool provides two essential features for development process of CPSs:
 [![CPSim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/XfD0eenY6rQ "CPSim Demo")
 
 # Prerequisite
-Linux based PC (Ubuntu 12.04 LTS is recommended)
-PCAN-USB (PEAK-System): this device is used to communicate between the simulator and the torcs. 
+Linux based PC (Ubuntu is recommended)
+PCAN-USB (PEAK-System): this device is used to communicate between the simulator and the vehicle dynamics simulator, TORCS. 
 
 # How to Install for Linux
 ##1. Install the PCAN-USB driver

@@ -456,14 +456,7 @@ int Execution::execute_nodes_on_PC()
 
 		// pick the first node
 		// (1) pick a job in the simulation ready queue
-#ifdef LINUX_MODE
-		gettimeofday(&start_time_measure, NULL);
-#endif
 		Node *cur_node = get_the_first_node();
-#ifdef LINUX_MODE
-		gettimeofday(&end_time_measure, NULL);
-		update_time(0);
-#endif
 		if(cur_node == NULL)	// no job. then jump
 		{
 			int min_release = get_nearest_start_time();			// get the nearest start time
@@ -504,58 +497,19 @@ int Execution::execute_nodes_on_PC()
 				ready_candidates.push_back(*pos);
 			for(pos = cur_node->non_deterministic_successors.begin(); pos != cur_node->non_deterministic_successors.end(); pos++)
 				ready_candidates.push_back(*pos);
-			
-			// for debug
-			for(pos = ready_candidates.begin(); pos != ready_candidates.end(); pos++)
-			{
-				if((*pos)->is_executed == 1)
-					printf("error!!\n");
-			}
-			
 
 			// kswe. (2) add a now job into OJPG
-#ifdef LINUX_MODE
-			gettimeofday(&start_time_measure, NULL);
-#endif
-			if(next_release_of_executed_job >= end_time)
-				dag->pop_and_push_node(cur_node, 0);
-			else
-				dag->pop_and_push_node(cur_node);
-#ifdef LINUX_MODE
-			gettimeofday(&end_time_measure, NULL);
-			update_time(1);
-#endif
+			dag->pop_and_push_node(cur_node);
 			
 			// kswe. (3) update start, finish times
-#ifdef LINUX_MODE
-			gettimeofday(&start_time_measure, NULL);
-#endif
 			update_start_finish_time(cur_node);
-#ifdef LINUX_MODE
-			gettimeofday(&end_time_measure, NULL);
-			update_time(2);
-#endif
 
 			// kswe. (4) adjust non-determinism
-#ifdef LINUX_MODE
-			gettimeofday(&start_time_measure, NULL);
-#endif
 			for(pos = dag->link_updatable.begin(); pos != dag->link_updatable.end(); pos++)
 				adjust_non_deterministic(*pos);
-#ifdef LINUX_MODE
-			gettimeofday(&end_time_measure, NULL);
-			update_time(3);
-#endif
 
 			// kswe. (5) update effective deadlines
-#ifdef LINUX_MODE
-			gettimeofday(&start_time_measure, NULL);
-#endif
 			update_deadlines_optimized();
-#ifdef LINUX_MODE
-			gettimeofday(&end_time_measure, NULL);
-			update_time(4);
-#endif
 
 			// update ready queue
 			for(pos = ready_candidates.begin(); pos != ready_candidates.end(); pos++)
