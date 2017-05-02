@@ -8,8 +8,7 @@ This tool provides two essential features for development process of CPSs:
 [![CPSim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/XfD0eenY6rQ "CPSim Demo")
 
 # Prerequisite
-Linux based PC (Ubuntu is recommended)
-USB-CAN adaptor (PCAN-USB of PEAK-System): this device is used to communicate between CPSim and the vehicle dynamics simulator.
+Two Linux based PCs (Ubuntu is recommended) and two USB-CAN adaptors (PCAN-USB of PEAK-System).
 
 # Installation and Run
 Please refer to "UserManual.pdf" in the root directory.
