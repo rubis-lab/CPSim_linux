@@ -103,6 +103,9 @@ public:
 	Task();
 	~Task();
 
+	float data[10];
+	int data_size;
+
 	virtual void read() = 0;
 	virtual void procedure() = 0;
 	virtual void write() = 0;
@@ -237,30 +240,6 @@ public:
 
 class Execution
 {
-protected:
-	unsigned long long cur_time;
-	int end_time;
-
-	// update effective deadline for target
-	// return 0: not updated, 1: updated
-	int update_deadline_for_each_node(Node *target);
-
-	int all_successor_updated(Node *target);
-	void update_deadlines_optimized();
-	void update_deadlines_revised();
-	void update_deadlines();
-	Node* get_the_first_node();
-	int get_nearest_start_time();
-	int check_all_predecessors_executed(Node *target);
-	void find_index_same_hw_id(int hw_id, int *start, int *end);
-	void emulate_schedule(int best_worst, Node *target);
-	void update_start_finish_time(Node *executed);
-	void adjust_non_deterministic(Node *target);
-
-#ifdef LINUX_MODE
-	void update_time(int index);
-#endif
-
 public:
 	Execution(int e_time, DAG *d, vector<Resource*> r);
 	~Execution();
@@ -269,11 +248,23 @@ public:
 	vector<Resource*> resources;
 	list<Node *> ready_queue;
 
-#ifdef LINUX_MODE
-	unsigned int elapsed_time[5];
-	unsigned int times[5];
-	struct timeval start_time_measure, end_time_measure;
-#endif
+	unsigned long long cur_time;
+	int end_time;
+
+	// update effective deadline for target
+	// return 0: not updated, 1: updated
+	int update_deadline_for_each_node(Node *target);
+	int all_successor_updated(Node *target);
+	void update_deadlines_optimized();
+	void update_deadlines_revised();
+	void update_deadlines();
+	int get_nearest_start_time();
+	int check_all_predecessors_executed(Node *target);
+	void find_index_same_hw_id(int hw_id, int *start, int *end);
+	void emulate_schedule(int best_worst, Node *target);
+	void update_start_finish_time(Node *executed);
+	void adjust_non_deterministic(Node *target);
+	Node* get_the_first_node();
 
 	// execute nodes on PC
 	// return 1: simulatable, 0: not simulatable

@@ -10,4 +10,4 @@ real-time_simulator: *.o
 	g++ $(CPPFLAGS) -c *.cpp
 
 clean:
-	rm -rf *.o real-time_simulator *.hh task_created.cpp
+	rm -rf *.o real-time_simulator

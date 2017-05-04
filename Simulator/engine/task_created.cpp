@@ -6,7 +6,7 @@ extern vector<Task*> whole_task_functions;
 extern list<CAN_Msg *> waiting_data;
 
 // Task1 (CC1)
-Task1::Task1(Task_info *task_info):Task(task_info)
+Task1::Task1():Task()
 {
 }
 
@@ -31,7 +31,7 @@ void Task1::procedure()
 }
 
 // Task2 (CC2)
-Task2::Task2(Task_info *task_info):Task(task_info)
+Task2::Task2():Task()
 {
 }
 
@@ -41,16 +41,13 @@ Task2::~Task2()
 
 void Task2::read()
 {
-	accel = whole_task_functions[0]->data[0]
+	accel = whole_task_functions[0]->data[0];
 }
 
 void Task2::write()
 {
-	;
-
-	// can send
-	CAN_Msg *can_msg = new CAN_Msg(completion_time, 1, 0x7FF, accel, accel, this->task_link->get_task_name());
-	insert_can_msg(&waiting_data, can_msg);
+	data[0] = accel;
+	data_size = 1;
 }
 
 void Task2::procedure()
@@ -60,7 +57,7 @@ void Task2::procedure()
 
 
 // Task3 (LK1)
-Task3::Task3(Task_info *task_info):Task(task_info)
+Task3::Task3():Task()
 {
 }
 
@@ -86,7 +83,7 @@ void Task3::procedure()
 
 
 // Task4 (LK2)
-Task4::Task4(Task_info *task_info):Task(task_info)
+Task4::Task4():Task()
 {
 }
 
@@ -96,7 +93,7 @@ Task4::~Task4()
 
 void Task4::read()
 {
-	lateral_distance = whole_task_functions[2]->data[0]
+	lateral_distance = whole_task_functions[2]->data[0];
 }
 
 void Task4::write()
@@ -113,7 +110,7 @@ void Task4::procedure()
 }
 
 // Task5 (LK3)
-Task5::Task5(Task_info *task_info):Task(task_info)
+Task5::Task5():Task()
 {
 }
 
@@ -129,11 +126,8 @@ void Task5::read()
 
 void Task5::write()
 {
-	;
-
-	// can send
-	CAN_Msg *can_msg = new CAN_Msg(completion_time, 1, 0x7FE, steering, lead_distance, this->task_link->get_task_name());
-	insert_can_msg(&waiting_data, can_msg);
+	data[0] = steering;
+	data[1] = lead_distance;
 }
 
 void Task5::procedure()
