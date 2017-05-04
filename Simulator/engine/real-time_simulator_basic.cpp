@@ -44,6 +44,9 @@ vector<unsigned long long> task_start_times;
 vector<unsigned long long> task_finish_times;
 list<Task_info*> running_tasks;
 
+// for checking thread priority
+vector<int> thread_priority;
+
 // for infinite looping
 int loop_condition = 1;
 
@@ -127,26 +130,27 @@ int main(int argc, char* argv[])
 		list<Node*>::iterator pos;
 		if(cur_node != NULL)
 		{
-			int runnable = 1;
-			int min_deadline = cur_node->effective_deadline;
+			int min_deadline = MAX_INT;
+			int max_priority = 50;		// default priority
 			for(pos = running_tasks.begin(); pos != running_tasks.end(); pos++)
 			{
-				if((*pos)->effective_deadline < cur_node->effective_deadline)
+				if((*pos)->effective_deadline < min_deadline)
 				{
-					runnable = 0;
-					break;
+					min_deadline = (*pos)->effective_deadline;
+					max_priority = thread_priority[(*pos)->task->id];
 				}
 			}
 
-			if(runnable)
+			if(min_deadline > cur_node->effective_deadline)		// this job can start
 			{
 				int running_task_id = cur_node->task->id;
 				task_finish_times[running_task_id] = 0;
 				running_tasks.push_back(cur_node->task);
 
 				// set the thread priority */
-				int relative_priority = -10 + running_tasks.size();
-				schedParam.sched_priority = sched_get_priority_max(SCHED_FIFO)-relative_priority;
+				int prio = max_priority+1;;
+				schedParam.sched_priority = prio;
+				thread_priority[running_task_id] = prio;
 				if (pthread_attr_setschedparam(&attr, &schedParam))
 				{
 						ERR("Failed to set scheduler parameters\n");
@@ -169,6 +173,8 @@ int main(int argc, char* argv[])
 			if(task_finish_times[(*pos)->task->id] > 0)		// complete
 			{
 				cur_node = (*pos);
+
+				thread_priority[cur_node->task->id] = 0;
 				
 				// get actual execution times
 				int task_id = (*pos)->task->id;
@@ -178,6 +184,11 @@ int main(int argc, char* argv[])
 					if(task_start_times[i] < task_finish_times[i] && task_start_times[i] > task_start_times[task_id] && task_finish_times[i] < task_finish_times[task_id])	// this job is preempted
 						execution_time -= (task_finish_times[i] - task_start_times[i]);
 				}
+
+				if(execution_time < cur_node->task->bcet_ECU)
+					execution_time = cur_node->task->bcet_ECU;
+				else if(execution_time > cur_node->task->wcet_ECU)
+					execution_time = cur_node->task->wcet_ECU;
 
 				// set start, execution, finish time
 				cur_node->start_time_PC = task_start_times[task_id];
@@ -257,6 +268,7 @@ void initialize()
 	{
 		task_start_times.push_back(0);
 		task_finish_times.push_back(0);
+		thread_priority.push_back(0);
 	}
 
 	int hyper_period = calculate_hyper_period(0, whole_tasks.size());
