@@ -5,7 +5,7 @@ This tool provides two essential features for development process of CPSs:
 1. Functional/Temporal Co-Validation
 2. Smooth Migration
 
-[![CPSim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/I1VRHhRAkLA "CPSim Demo")
+[![CPSim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/8elIvlSAGi0 "CPSim Demo")
 
 # Prerequisite
 Two Linux based PCs (Ubuntu is recommended) and two USB-CAN adaptors (PCAN-USB of PEAK-System).
