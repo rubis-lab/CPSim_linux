@@ -1,5 +1,4 @@
-#include "stdafx.h"
-#include "task_created.hh"
+#include "components.h"
 
 Task_info::Task_info()
 {
@@ -36,11 +35,10 @@ Task_info::~Task_info()
 {
 }
 
-// default constructor for Task_info class
-Task::Task()
+// after a job is created, next job_id and release time should be modified for next job creation
+void Task_info::job_id_increase()
 {
-}
-
-Task::~Task()
-{
+	next_job_id++;
+	next_release_time += period;
+	a_deadline = next_release_time + r_deadline;
 }

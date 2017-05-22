@@ -1,6 +1,7 @@
 #ifndef __COMPONENTCLASSH_
 #define __COMPONENTCLASSH_
 
+#define LINUX_MODE
 #define DEBUG_MODE		0
 
 #include <stdio.h>
@@ -12,6 +13,11 @@
 #include <list>
 #include <algorithm>
 #include <math.h>
+
+#ifdef LINUX_MODE
+#include <sys/time.h>
+#include <unistd.h>
+#endif
 
 #define RAND_RANGE(a,b) (((float)rand()/(float)RAND_MAX)*((float)b-(float)a)+(float)a)
 #define MAX_INT 0x7fffffff
@@ -93,19 +99,8 @@ public:
 	// data dependency
 	vector<Task_info*> successors;
 	vector<Task_info*> predecessors;
-};
 
-/* Task function class
- */
-class Task : public Component
-{
-public:
-	Task();
-	~Task();
-
-	virtual void read() = 0;
-	virtual void procedure() = 0;
-	virtual void write() = 0;
+	void job_id_increase();		// increase next job id
 };
 
 // event-driven scheduler
@@ -238,7 +233,7 @@ public:
 class Execution
 {
 protected:
-	unsigned long long cur_time;
+	int cur_time;
 	int end_time;
 
 	// update effective deadline for target
