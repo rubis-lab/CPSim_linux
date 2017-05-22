@@ -42,7 +42,7 @@ list<CAN_Msg *> waiting_data;
 // for execution time update
 vector<unsigned long long> task_start_times;
 vector<unsigned long long> task_finish_times;
-list<Node*> running_tasks;
+list<Task_info*> running_tasks;
 
 // for checking thread priority
 vector<int> thread_priority;
@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 	initialize();
 
 	// set CAN connection for one channel
-	init_CAN();
+	init_CAN(1);
 
 	// initialize thread atrributes
     struct sched_param schedParam;
@@ -80,8 +80,8 @@ int main(int argc, char* argv[])
 
     // initialize the thread attributes
     if (pthread_attr_init(&attr)) {
-            printf("Failed to initialize thread attrs\n");
-            exit(1);
+            ERR("Failed to initialize thread attrs\n");
+            cleanup(EXIT_FAILURE);
     }
 	// set affinity
 	CPU_ZERO(&cpu);
@@ -89,13 +89,13 @@ int main(int argc, char* argv[])
 	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpu);
     // force the thread to use custom scheduling attributes
     if (pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED)) {
-            printf("Failed to set schedule inheritance attribute\n");
-            exit(1);
+            ERR("Failed to set schedule inheritance attribute\n");
+            cleanup(EXIT_FAILURE);
     }
     // set the thread to be fifo real time scheduled */
     if (pthread_attr_setschedpolicy(&attr, SCHED_FIFO)) {
-            printf("Failed to set FIFO scheduling policy\n");
-            exit(1);
+            ERR("Failed to set FIFO scheduling policy\n");
+            cleanup(EXIT_FAILURE);
     }
 
 	// create recv thread
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
 			{
 				int running_task_id = cur_node->task->id;
 				task_finish_times[running_task_id] = 0;
-				running_tasks.push_back(cur_node);
+				running_tasks.push_back(cur_node->task);
 
 				// set the thread priority */
 				int prio = max_priority+1;;
@@ -153,15 +153,15 @@ int main(int argc, char* argv[])
 				thread_priority[running_task_id] = prio;
 				if (pthread_attr_setschedparam(&attr, &schedParam))
 				{
-						printf("Failed to set scheduler parameters\n");
-						exit(1);
+						ERR("Failed to set scheduler parameters\n");
+						cleanup(EXIT_FAILURE);
 				}
 
 				// create task thread
-				if (pthread_create(&taskThread, &attr, task_thread, (void*)&running_task_id))
+				if (pthread_create(&taskThread, &attr, task_thread, (void*)&running_task_num))
 				{
-						printf("Failed to create task thread\n");
-						exit(1);
+						ERR("Failed to create task thread\n");
+						cleanup(EXIT_FAILURE);
 				}
 			}
 		}
@@ -202,13 +202,14 @@ int main(int argc, char* argv[])
 
 		if(cur_node != NULL)		// this node can complete
 		{
+			cur_time += cur_node->remaining_time_PC;	// cur_time increases
 			cur_node->remaining_time_PC = 0;
 			cur_node->actual_execution_time_ECU = cur_node->actual_execution_time_PC*100/cur_node->task->modified_rate;
 			cur_node->is_executed = 1;
 			next_release_of_executed_job = cur_node->release_time + dag->hyper_period;
 
 			// pop this job on the ready queue
-			execution->ready_queue.remove(cur_node);
+			ready_queue.remove(cur_node);
 
 			// clear jobs whose deadline would be changed
 			dag->deadline_updatable.clear();
@@ -221,22 +222,13 @@ int main(int argc, char* argv[])
 				ready_candidates.push_back(*pos);
 
 			// (2) add a now job into OJPG
-			dag->pop_and_push_node(cur_node);
+			if(next_release_of_executed_job >= end_time)
+				dag->pop_and_push_node(cur_node, 0);
+			else
+				dag->pop_and_push_node(cur_node);
 			
 			// (3) update start, finish times
 			execution->update_start_finish_time(cur_node);
-
-			// set data to be sent to the physical-system
-			if(cur_node->task->is_write == 1)
-			{
-				switch(cur_node->task->id)
-				{
-#include "can_write.hh"
-
-					default:
-						break;
-				}
-			}
 
 			// (4) adjust non-determinism
 			for(pos = dag->link_updatable.begin(); pos != dag->link_updatable.end(); pos++)
@@ -249,7 +241,7 @@ int main(int argc, char* argv[])
 			for(pos = ready_candidates.begin(); pos != ready_candidates.end(); pos++)
 			{
 				if((*pos)->predecessors.empty())
-					execution->ready_queue.push_back(*pos);
+					ready_queue.push_back(*pos);
 			}
 		}
 		// try sending data
@@ -296,7 +288,7 @@ void initialize()
 	// ready for plan and execution
 	int target_period = hyper_period * HYPER;
 	execution = new Execution(target_period, dag, resources);
-	execution->update_deadlines();
+	execution->update_deadline();
 
 	// set initial jobs in the ready queue
 	for(int i = 0; i < num_tasks; i++)
@@ -393,7 +385,7 @@ void* receive_CAN_thread(void *arg)
 		// Check the receive queue for new messages
 		//
 		errno = CAN_Read(hCAN1, &msg);
-		if(!errno)
+		if(errno == PCAN_ERROR_OK)
 		{
 			unread_count = 0;
 			switch(msg.ID)
