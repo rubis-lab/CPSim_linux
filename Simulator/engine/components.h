@@ -1,6 +1,9 @@
 #ifndef __COMPONENTCLASSH_
 #define __COMPONENTCLASSH_
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -88,6 +91,7 @@ private:
 	int current_time;		// time that schedule have been created until now
 
 protected:
+    int get_task_index_from_task_id(int);
 	void modify_time(list<Event*>*, int);
 	void resort(list<Event*>*);
 	void process_completion(list<Event*>*, Event*, int, list<Time_plot *>*);
@@ -257,13 +261,14 @@ public:
 	Task(int, int, int, int, Task_info*);
 	~Task();
 
+    // default internal variables for communicating with other tasks
+    float internal_data[10];
 	Task_info *task_link;
 
 	// data dependency
 	vector<Task*> predecessors;		// job level predecessor
 	vector<Task*> successors;		// job level successor
 
-	virtual void read() = 0;
 	virtual void procedure() = 0;
 	virtual void write() = 0;
 

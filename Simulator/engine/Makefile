@@ -1,6 +1,6 @@
-CPPFLAGS=-g -D_REENTRANT -Wno-write-strings -pthread -lpcan
+CPPFLAGS=-g -DNOCANMODE -D_REENTRANT -Wno-write-strings -pthread
 LDFLAGS=-g
-LDLIBS=-lm -ldl -lpthread -lpcan
+LDLIBS=-lm -ldl -lpthread
 
 
 real-time_simulator: *.o

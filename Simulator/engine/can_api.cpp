@@ -7,7 +7,7 @@ CAN_Msg::CAN_Msg()
 }
 
 // constructor for CAN_Msg class
-CAN_Msg::CAN_Msg(unsigned long long time_input, int channel_input, int id_input, float data1, float data2, char* name)
+CAN_Msg::CAN_Msg(unsigned long long time_input, int channel_input, int id_input,int data_num_input, int index1, int index2, float data1, float data2, char* name)
 {
 	time = time_input;
 	channel = channel_input;
@@ -17,6 +17,11 @@ CAN_Msg::CAN_Msg(unsigned long long time_input, int channel_input, int id_input,
 	msg.MSGTYPE = 0;
 	msg.LEN = 8;
 	strcpy(task_name, name);
+	num_data = data_num_input;
+    data_index1 = index1;
+    data_index2 = index2;
+    output_data1 = data1;
+    output_data2 = data2;
 }
 
 CAN_Msg::~CAN_Msg()
@@ -49,23 +54,18 @@ void insert_can_msg(list<CAN_Msg *> *msg_list, CAN_Msg *input)
 	// first element
 	if(msg_list->empty())
 	{
-		pthread_mutex_lock(&section_for_can_sending);
 		msg_list->push_back(input);
-		pthread_mutex_unlock(&section_for_can_sending);
 		return;
 	}
 
-	pthread_mutex_lock(&section_for_can_sending);
 	list<CAN_Msg*>::iterator pos;
 	for(pos = msg_list->begin(); pos != msg_list->end(); pos++)
 	{
 		if((*pos)->get_time() > input->get_time())
 		{
 			msg_list->insert(pos, input);
-			pthread_mutex_unlock(&section_for_can_sending);
 			return;
 		}
 	}
 	msg_list->push_back(input);		// push target to the last position
-	pthread_mutex_unlock(&section_for_can_sending);
 }
