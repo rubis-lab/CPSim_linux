@@ -8,7 +8,7 @@ This tool provides two essential features for development process of CPSs:
 [![CPSim Demo](https://github.com/rubis-lab/images/blob/master/pic2.png)](https://youtu.be/I1VRHhRAkLA "CPSim Demo")
 
 # Prerequisite
-Two Linux based PCs (Ubuntu is recommended) and two USB-CAN adaptors (PCAN-USB of PEAK-System).
+Linux based PCs (Ubuntu 16.04 was tested).
 
 # Installation and Run
 Please refer to "UserManual.pdf" in the root directory.

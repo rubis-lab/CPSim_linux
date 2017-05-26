@@ -1,13 +1,5 @@
-CPPFLAGS=-g -D_REENTRANT -pthread
-LDFLAGS=-g
-LDLIBS=-lm -ldl -lpthread
-
-
-generating_codes: generating_codes.o
-	g++ $(LDFLAGS) -o generating_codes generating_codes.o $(LDLIBS)
-
-generating_codes.o: generating_codes.cpp
-	g++ $(CPPFLAGS) -c generating_codes.cpp
+all:
+	g++ -g -I/usr/include/libxml2 -o parser DesignParser.cpp -lxml2
 
 clean:
-	rm -rf generating_codes generating_codes.o
+	rm -rf parser

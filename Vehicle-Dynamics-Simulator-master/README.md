@@ -1,2 +1,0 @@
-# VDSimulator
-Vehicle Dynamics Simulator

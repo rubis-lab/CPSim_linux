@@ -238,6 +238,30 @@ void Scheduler::modify_time(list<Event*> *header, int time)
 	}
 }
 
+/* This function gets task internal index in this class from task id
+ *
+ * <argument>
+ * task_id: task id
+ *
+ * <return>
+ * task internal index
+ */
+int Scheduler::get_task_index_from_task_id(int task_id)
+{
+    int re = -1;
+    int num_tasks = tasks.size();
+    for(int i = 0; i < num_tasks; i++)
+    {
+        if(tasks[i]->get_id() == task_id)
+        {
+            re = i;
+            break;
+        }
+
+    }
+    return re;
+}
+
 /* This function extracts the expected schedule between the current time and 'to' of all tasks in the resource who has this scheduler.
  * 
  * <argument>
@@ -382,8 +406,6 @@ int Scheduler::extract_schedule(int to, int over_time, list<Time_plot *> *plot)
 	if(log.empty())
 		return flag;
 
-	// move events from log to log2 for executing in this time window
-	int first_task_num = tasks[0]->get_id();		// first task number in this resource
 	int num_tasks_in = tasks.size();				// number of tasks in this resource
 	vector<int> is_complete(num_tasks_in);
 	for(int i = 0; i < num_tasks_in; i++)
@@ -393,9 +415,9 @@ int Scheduler::extract_schedule(int to, int over_time, list<Time_plot *> *plot)
 		return flag;
 	log.pop_front();
 	if(event_temp->get_type() == START)
-		is_complete[event_temp->get_task_id()-first_task_num] = 1;
+		is_complete[get_task_index_from_task_id(event_temp->get_task_id())] = 1;
 	else
-		is_complete[event_temp->get_task_id()-first_task_num] = 0;
+		is_complete[get_task_index_from_task_id(event_temp->get_task_id())] = 0;
 
 	stop_condition = 0;
 	while(1)
@@ -419,9 +441,9 @@ int Scheduler::extract_schedule(int to, int over_time, list<Time_plot *> *plot)
 		event_temp = log.front();
 		log.pop_front();
 		if(event_temp->get_type() == START)
-			is_complete[event_temp->get_task_id()-first_task_num] = 1;
+			is_complete[get_task_index_from_task_id(event_temp->get_task_id())] = 1;
 		else
-			is_complete[event_temp->get_task_id()-first_task_num] = 0;
+			is_complete[get_task_index_from_task_id(event_temp->get_task_id())] = 0;
 	}
 
 	return flag;

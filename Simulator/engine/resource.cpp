@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "components.h"
 
 // constructor for Resource class

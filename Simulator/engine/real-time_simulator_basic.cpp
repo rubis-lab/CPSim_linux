@@ -1,20 +1,11 @@
-#include "stdafx.h"
 #include "task_created.hh"
 #include "can_api.h"
 #include "data_list.hh"
 #include <sys/time.h>
 #include <unistd.h>
+#include <signal.h>
 
-#define TIME_WINDOW	1000000		// us
-#define OVER_TIME 1000000		// us
-
-#define LOCATION "~/"	// path for log
-
-int nType = HW_PCI;
-__u32 dwPort = 0;
-__u16 wIrq = 0;
-__u16 wBTR0BTR1 = CAN_BAUD_1M;
-int nExtended = CAN_INIT_TYPE_ST;
+char LOCATION[1000];
 
 int num_resources = 0;
 int num_tasks = 0;
@@ -27,51 +18,83 @@ int current_time = 0;		// simulation time (us)
 timeval reference_time;
 timeval now;				// real time
 
-// for data from CAR
-float car_output[10];
-float user_input[10];
 
 // for internal data
 float memory_buffer[10];
+float user_input_internal[10];
 
 // for sending data
-pthread_mutex_t section_for_sending = PTHREAD_MUTEX_INITIALIZER;
 list<CAN_Msg *> waiting_data;
 
 // data structure for schedule plotting
-pthread_mutex_t section_for_waiting = PTHREAD_MUTEX_INITIALIZER;
 list<Time_plot *> waiting_plot;
 int recent_time = 0;	// time when can packet was sent recently
 
 // data structure for response time plotting
-pthread_mutex_t section_for_response = PTHREAD_MUTEX_INITIALIZER;
 list<Time_plot *> response_plot;
 
 // for real-time plotting
 unsigned long long passed_time = 0;
-FILE *acc, *str, *spd, *rpm, *yaw;
+FILE *acc, *str, *spd, *dis;
 FILE *fp_chart, *fp_serial;
 FILE *response_chart[MAX_TASKS];
 
 // for infinite looping
 int loop_condition = 1;
 
+#ifndef NOCANMODE
 // for CAN
 HANDLE hCAN1;
 HANDLE hCAN2;
+int nType = HW_PCI;
+__u32 dwPort = 0;
+__u16 wIrq = 0;
+__u16 wBTR0BTR1 = CAN_BAUD_1M;
+int nExtended = CAN_INIT_TYPE_ST;
+#endif
 
 void initialize();
-void init_CAN(int num_channel);
 void initialize_for_plotting();
 unsigned long long getcurrenttime();
 void wait(unsigned long long to);
-void* receive_CAN_thread(void *arg);
 void try_send_data_via_can(FILE *fp);
 void try_write_for_schedule_plot(FILE *fp);
 void try_write_for_line_plot();
 void try_write_for_response_plot();
-void program_complete();
+void program_complete(int signal);
 void add_time_plot(Task *task, list<Time_plot *> *plot);
+void process_others();
+int calculate_hyper_period(unsigned int start_index, unsigned int size);
+#ifndef NOCANMODE
+void init_CAN(int num_channel);
+void* receive_CAN_thread(void *arg);
+#endif
+
+#ifdef NOCANMODE
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#define SHMEM 1230
+#define SHMEM2 4320
+
+// for shared mem (input)
+int shmid_input;
+float *user_input;
+int size_user_input = 10;
+void *shared_memory_input = (void *)0;
+
+// for shared mem (output)
+int shmid_output;
+float *car_output;
+int size_car_output = 200;
+void *shared_memory_output = (void *)0;
+
+void *init_shared_mem(int *id, int key, int data_size, int num_of_data, void *mem);
+int free_shared_mem(void *data, int id);
+#else
+// for data from CAR
+float car_output[10];
+float user_input[10];
+#endif
 
 // main function
 int main(int argc, char* argv[])
@@ -79,17 +102,21 @@ int main(int argc, char* argv[])
 	// create resources, schedulers, tasks and set parameters
 	initialize();
 
+#ifndef NOCANMODE
 	// set CAN connection
 	init_CAN(1);
+#endif
 
 	// initialize for plotting
 	initialize_for_plotting();
 
+#ifndef NOCANMODE
 	// create recv thread
 	pthread_t hThread;
 	int thread_id;
 	thread_id = pthread_create(&hThread, NULL, receive_CAN_thread, NULL);	
 	if(thread_id < 0) exit(3);  
+#endif
 
 	char *task_name;
 	char *resource_name;
@@ -97,6 +124,8 @@ int main(int argc, char* argv[])
 	int is_start;
 
 	Task *next = NULL;
+
+	int hyperperiod = calculate_hyper_period(0, whole_tasks.size());
 
 	// check current time
 	gettimeofday(&reference_time, NULL);
@@ -106,44 +135,23 @@ int main(int argc, char* argv[])
 	// main loop
 	while(loop_condition == 1)
 	{
-		// try sending data
-		try_send_data_via_can(fp_chart);
-
-		// try writing for schedule plot
-		try_write_for_schedule_plot(fp_chart);
-
-		// try writing for line plot
-		try_write_for_line_plot();
-
-		// try writing for response plot
-		try_write_for_response_plot();
 
 		int current_time_temp = current_time;
 
 		// increase simulation time
-		current_time += TIME_WINDOW;
+		current_time += hyperperiod;
 
 		// create expected schedule for each resource
 		for(unsigned int i = 0; i < resources.size(); i++)
 		{
-			resources[i]->scheduler_link->extract_schedule(current_time, OVER_TIME, &waiting_plot);
+			resources[i]->scheduler_link->extract_schedule(current_time, hyperperiod, &waiting_plot);
 		}
 
 		// optimize waiting jobs with considering effective release time and deadline
 		plan->generate_plan(&resources, &whole_tasks);
 		while(loop_condition == 1)
 		{
-			// try sending data
-			try_send_data_via_can(fp_chart);
-
-			// try writing for schedule plot
-			try_write_for_schedule_plot(fp_chart);
-
-			// try writing for line plot
-			try_write_for_line_plot();
-
-			// try writing for response plot
-			try_write_for_response_plot();
+		    process_others();
 
 			// get next executable job
 			next = execution->get_next_job(current_time_temp, &whole_tasks);
@@ -154,10 +162,7 @@ int main(int argc, char* argv[])
 			{
 				do
 				{
-					try_send_data_via_can(fp_chart);
-					try_write_for_schedule_plot(fp_chart);
-					try_write_for_line_plot();
-					try_write_for_response_plot();
+				    process_others();
 				} while(next->get_effective_release_time() > getcurrenttime());
 			}
 
@@ -174,9 +179,7 @@ int main(int argc, char* argv[])
 			fflush(fp_serial);
 
 			// push response time for plotting
-			pthread_mutex_lock(&section_for_response);
 			add_time_plot(next, &response_plot);
-			pthread_mutex_unlock(&section_for_response);
 
 			// jump simulation time into this job's release time
 			if(next->task_link->get_is_read() == 1 && current_time_temp < next->get_effective_release_time())
@@ -185,7 +188,6 @@ int main(int argc, char* argv[])
 				current_time_temp += next->task_link->get_modified_wcet();
 
 			// execute a task (job)
-			next->read();
 			next->procedure();
 			next->write();
 
@@ -202,10 +204,7 @@ int main(int argc, char* argv[])
 			// wait during modified wcet
 			do
 			{
-				try_send_data_via_can(fp_chart);
-				try_write_for_schedule_plot(fp_chart);
-				try_write_for_line_plot();
-				try_write_for_response_plot();
+			    process_others();
 			} while(expected_end_time > getcurrenttime());
 		}
 	}
@@ -213,8 +212,14 @@ int main(int argc, char* argv[])
 	// uninitialize phase
 	fclose(fp_chart);
 	fclose(fp_serial);
+#ifdef NOCANMODE
+	free_shared_mem(user_input, shmid_input);		// shm end (input)
+	free_shared_mem(car_output, shmid_output);	// shm end (output)
+#else
 	CAN_Close(hCAN1);
 	CAN_Close(hCAN2);
+#endif
+    printf("normal exit\n");
 	getchar();
 
 	return 0;
@@ -225,7 +230,12 @@ int main(int argc, char* argv[])
  */
 void initialize()
 {
-#include "initialize.hh"
+    // get home path
+    char *home = getenv("HOME");
+    sprintf(LOCATION, "%s/eclipse/", home);
+//#include "initialize.hh"
+#include "ecudec.hh"
+#include "swcdec.hh"
 
 	num_resources = resources.size();
 	num_tasks = whole_tasks.size();
@@ -238,14 +248,29 @@ void initialize()
 	plan = new Plan();
 	execution  = new Execution();
 
+#ifdef NOCANMODE
+   	signal(SIGTERM, program_complete);
+	signal(SIGINT, program_complete);
+	signal(SIGKILL, program_complete);
+	user_input = (float*)init_shared_mem(&shmid_input, SHMEM, sizeof(float), size_user_input, shared_memory_input);		// shm start (input)
+	car_output = (float*)init_shared_mem(&shmid_output, SHMEM2, sizeof(float), size_car_output, shared_memory_output);
+	for(int i = 0; i < size_user_input; i++)
+		user_input[i] = 0.0;
+	for(int i = 0; i < size_car_output; i++)
+		car_output[i] = 0.0;
+#endif
+
 	// for data from car
 	for(int i = 0; i < 10; i++)
 	{
 		car_output[i] = 0.0;
+		user_input[i] = 0.0;
+		user_input_internal[i] = 0.0;
 		memory_buffer[i] = 0.0;
 	}
 }
 
+#ifndef NOCANMODE
 /* This function initializes CAN connection.
  *
  * <argument>
@@ -291,6 +316,7 @@ void init_CAN(int num_channel)
 		}	
 	}
 }
+#endif
 
 /* This function initializes the files for plotting.
  */
@@ -305,10 +331,8 @@ void initialize_for_plotting()
 	str = fopen(file_name, "w");
 	sprintf(file_name, "%sspeed.txt", LOCATION);
 	spd = fopen(file_name, "w");
-	sprintf(file_name, "%srpm.txt", LOCATION);
-	rpm = fopen(file_name, "w");
-	sprintf(file_name, "%syaw.txt", LOCATION);
-	yaw = fopen(file_name, "w");
+	sprintf(file_name, "%sdistance.txt", LOCATION);
+	dis = fopen(file_name, "w");
 
 	// for expected schedule plotting
 	sprintf(file_name, "%sinternal.log", LOCATION);
@@ -352,6 +376,7 @@ void initialize_for_plotting()
 		fprintf(fp_config, "%s", line);
 	char *task_n;
 	int max_y;
+
 	for(int i = 0; i < num_tasks; i++)		// print each task
 	{
 		task_n = whole_tasks[i]->get_task_name();
@@ -366,6 +391,7 @@ void initialize_for_plotting()
 		else
 			fprintf(fp_config, "visible=0\n");
 	}
+
 	fclose(fp_original);
 	fclose(fp_config);
 }
@@ -389,6 +415,7 @@ void wait(unsigned long long to)
 	}
 }
 
+#ifndef NOCANMODE
 // This is a thread for receiving CAN message.
 void* receive_CAN_thread(void *arg)
 {
@@ -407,7 +434,6 @@ void* receive_CAN_thread(void *arg)
 			switch(msg.ID)
 			{
 #include "can_read.hh"
-#include "dummy.hh"
 
 				default:
 //					printf("not defined msg\n");
@@ -432,6 +458,7 @@ void* receive_CAN_thread(void *arg)
 
 	return NULL;
 }
+#endif
 
 /* This function tries to send CAN messages via CAN bus.
  * If there is no message to send at this time, do nothing.
@@ -446,10 +473,8 @@ void try_send_data_via_can(FILE *fp)
 	if(waiting_data.front()->get_time() < getcurrenttime())
 	{
 		char strMsg[256];
-		pthread_mutex_lock(&section_for_sending);
 		send_data = waiting_data.front();
 		waiting_data.pop_front();
-		pthread_mutex_unlock(&section_for_sending);
 
 		// print for scheduling plot
 		char *task_name = send_data->get_task_name();
@@ -463,6 +488,12 @@ void try_send_data_via_can(FILE *fp)
 		is_start = 0;
 		fprintf(fp, "%d, msg: %s, %d\n", recent_time, task_name, is_start);
 
+#ifdef  NOCANMODE
+        // no CAN mode
+        user_input[send_data->data_index1] = send_data->output_data1;
+        if(send_data->num_data > 1)
+            user_input[send_data->data_index2] = send_data->output_data2;
+#else
 		// The message is sent using the PCAN-USB
 		if (send_data->get_channel() == 1) 
 			errno = CAN_Write(hCAN1, &(send_data->msg));
@@ -474,7 +505,7 @@ void try_send_data_via_can(FILE *fp)
 			cout << strMsg << endl;
 		}
 		// else : success
-
+#endif
 		delete send_data;
 	}
 }
@@ -515,17 +546,15 @@ void try_write_for_line_plot()
 
 	passed_time += 100000;		// 100 ms
 
-		fprintf(acc, "%d.%06d %f\n", sec, usec, user_input[ACCELERATION]);
+		fprintf(acc, "%d.%06d %f\n", sec, usec, user_input[ACCEL]);
 		fprintf(str, "%d.%06d %f\n", sec, usec, user_input[STEER]);
 		fprintf(spd, "%d.%06d %f\n", sec, usec, car_output[SPEED]);
-		fprintf(rpm, "%d.%06d %f\n", sec, usec, car_output[RPM]);
-		fprintf(yaw, "%d.%06d %f\n", sec, usec, car_output[YAW_RATE]);
+		fprintf(dis, "%d.%06d %f\n", sec, usec, car_output[DISTANCE]);
 
 	fflush(acc);
 	fflush(str);
 	fflush(spd);
-	fflush(rpm);
-	fflush(yaw);
+	fflush(dis);
 }
 
 /* This function tries to write the current response times of tasks to files for plotting response times.
@@ -579,4 +608,80 @@ void add_time_plot(Task *task, list<Time_plot *> *plot)
 		if(flag == 0)
 			plot->push_back(t);		// push target to the last position
 	}
+}
+
+void program_complete(int signal)
+{
+    loop_condition = 0;
+}
+
+/* This function processes other jobs except executing tasks.
+ */
+void process_others()
+{
+	// try sending data
+	try_send_data_via_can(fp_chart);
+
+    // try writing for schedule plot
+	try_write_for_schedule_plot(fp_chart);
+
+	// try writing for line plot
+	try_write_for_line_plot();
+
+	// try writing for response plot
+	try_write_for_response_plot();
+}
+
+/* This function initializes shared memory for communicating with TORCS.
+ */
+void *init_shared_mem(int *id, int key, int data_size, int num_of_data, void *mem)
+{
+	*id = shmget((key_t)key, data_size*num_of_data, 0666|IPC_CREAT);
+	if(*id == -1)
+	{
+		perror("shmget failed : ");
+		exit(0);
+	}
+
+	mem = shmat(*id, (void *)0, 0);
+	if(mem == (void *)-1)
+	{
+		perror("shmat failed : ");
+		exit(0);
+	}
+
+	return mem;
+}
+
+/* This function releases shared memory.
+ */
+int free_shared_mem(void *data, int id)
+{
+	shmdt(data);
+	return shmctl(id, IPC_RMID, 0);
+}
+
+/* This function calculates hyperperiod of all tasks.
+ */
+int calculate_hyper_period(unsigned int start_index, unsigned int size)
+{
+	if(size <= 0)
+		return 0;
+	int lcm = whole_tasks[start_index]->get_period()/1000;
+	for(unsigned int i = start_index+1; i < start_index+size; i++)
+	{
+		int temp1 = lcm;
+		int temp2 = whole_tasks[i]->get_period()/1000;
+		int num1 = temp1;
+		int num2 = temp2;
+		while(num1 != num2)
+		{
+			if(num1 > num2)
+				num1 = num1 - num2;
+			else
+				num2 = num2 - num1;
+		}
+		lcm = (temp1*temp2)/num1;
+	}
+	return lcm*1000;
 }

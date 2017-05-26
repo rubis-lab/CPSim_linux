@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "task_created.hh"
 
 // default constructor for Task_info class

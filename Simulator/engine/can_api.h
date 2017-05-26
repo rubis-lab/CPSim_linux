@@ -5,8 +5,6 @@
 #include <string.h>
 #include <iostream>
 #include <list>
-#include <pcan.h>
-#include <libpcan.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,11 +12,26 @@
 #include <ctype.h>
 #include <errno.h>
 
+#ifndef NOCANMODE
+#include <pcan.h>
+#include <libpcan.h>
+#endif
+
 using namespace std;
 
 // for CAN
 #define PCANUSB1	"/dev/pcan32"
 #define PCANUSB2	"/dev/pcan32"
+
+#ifdef NOCANMODE
+typedef struct
+{
+    unsigned int ID;            // 11/29 bit code
+    unsigned char MSGTYPE;      // bits of MSGTYPE
+    unsigned char LEN;          // count of data bytes (0..8)
+    unsigned char DATA[8];      // data bytes, up to 8
+} TPCANMsg;
+#endif
 
 /* CAN Message class
  * This class is responsible for sending messages via CAN bus
@@ -32,9 +45,14 @@ private:
 
 public:
 	CAN_Msg();
-	CAN_Msg(unsigned long long, int, int, float, float, char*);
+	CAN_Msg(unsigned long long, int, int, int, int, int, float, float, char*);
 	~CAN_Msg();
 	TPCANMsg msg;					// message struct provided by PCAN-USB API
+	int num_data;
+	int data_index1;
+	int data_index2;
+	float output_data1;
+	float output_data2;
 
 	unsigned long long get_time();
 	int get_channel();
