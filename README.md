@@ -11,7 +11,7 @@ This tool provides two essential features for development process of CPSs:
 Linux based PCs (Ubuntu 16.04 was tested).
 
 # Installation and Run
-Please refer to "UserManual.pdf" in the root directory.
+Please refer to "user_manual.pdf" in the root directory.
 
 # Reference
 [1] Kyoung-Soo We, Chang-Gun Lee, Junyung Lee, Kyuwon Kim, Kyongsu Yi, and Jong-Chan Kim, "ECU-in-the-Loop Real-Time Simulation Technique for Developing Integrated Vehicle Safety System", in International Conference on Control, Automation and Systems (ICCAS 2014), Gyeonggi-do, Korea, Oct 2014
