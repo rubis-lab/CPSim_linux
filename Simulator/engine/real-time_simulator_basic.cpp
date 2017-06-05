@@ -35,7 +35,7 @@ list<Time_plot *> response_plot;
 
 // for real-time plotting
 unsigned long long passed_time = 0;
-FILE *acc, *str, *spd, *dis;
+FILE *acc, *str, *spd, *dis, *lap_time;
 FILE *fp_chart, *fp_serial;
 FILE *response_chart[MAX_TASKS];
 
@@ -65,6 +65,7 @@ void program_complete(int signal);
 void add_time_plot(Task *task, list<Time_plot *> *plot);
 void process_others();
 int calculate_hyper_period(unsigned int start_index, unsigned int size);
+void calculate_score();
 #ifndef NOCANMODE
 void init_CAN(int num_channel);
 void* receive_CAN_thread(void *arg);
@@ -212,6 +213,11 @@ int main(int argc, char* argv[])
 	// uninitialize phase
 	fclose(fp_chart);
 	fclose(fp_serial);
+	fclose(acc);
+	fclose(str);
+	fclose(spd);
+	fclose(dis);
+	fclose(lap_time);
 #ifdef NOCANMODE
 	free_shared_mem(user_input, shmid_input);		// shm end (input)
 	free_shared_mem(car_output, shmid_output);	// shm end (output)
@@ -219,6 +225,8 @@ int main(int argc, char* argv[])
 	CAN_Close(hCAN1);
 	CAN_Close(hCAN2);
 #endif
+    printf("calculating score...\n");
+    calculate_score();
     printf("normal exit\n");
 	getchar();
 
@@ -333,6 +341,8 @@ void initialize_for_plotting()
 	spd = fopen(file_name, "w");
 	sprintf(file_name, "%sdistance.txt", LOCATION);
 	dis = fopen(file_name, "w");
+	sprintf(file_name, "%slap_time.txt", LOCATION);
+	lap_time = fopen(file_name, "w");
 
 	// for expected schedule plotting
 	sprintf(file_name, "%sinternal.log", LOCATION);
@@ -550,11 +560,13 @@ void try_write_for_line_plot()
 		fprintf(str, "%d.%06d %f\n", sec, usec, user_input[STEER]);
 		fprintf(spd, "%d.%06d %f\n", sec, usec, car_output[SPEED]);
 		fprintf(dis, "%d.%06d %f\n", sec, usec, car_output[DISTANCE]);
+		fprintf(lap_time, "%d.%06d %f\n", sec, usec, car_output[PASSED_TIME]);
 
 	fflush(acc);
 	fflush(str);
 	fflush(spd);
 	fflush(dis);
+	fflush(lap_time);
 }
 
 /* This function tries to write the current response times of tasks to files for plotting response times.
@@ -684,4 +696,72 @@ int calculate_hyper_period(unsigned int start_index, unsigned int size)
 		lcm = (temp1*temp2)/num1;
 	}
 	return lcm*1000;
+}
+
+/* This function calculates the score.
+ */
+void calculate_score()
+{
+	char file_name[100];
+    char line_dis[1000], line_time[1000];
+    float score, final_lap_time, race_start_time, race_end_time, cumulated_distance = 0;
+    float temp_distance;
+    char *tok;
+	sprintf(file_name, "%sdistance.txt", LOCATION);
+	dis = fopen(file_name, "r");
+	sprintf(file_name, "%slap_time.txt", LOCATION);
+	lap_time = fopen(file_name, "r");
+//	printf("file_open\n");
+   
+    // find race start point
+    while(1)
+    {
+        fgets(line_dis, 1000, dis);
+        fgets(line_time, 1000, lap_time);
+        tok = strtok(line_dis, " \t\n");
+        race_start_time = atof(tok);        // time in simulator (not in torcs)
+        tok = strtok(NULL, " \t\n");        // lateral distance
+        temp_distance = atof(tok);
+        if(temp_distance > 0)               // race started
+            break;
+    }
+    cumulated_distance += temp_distance;
+//    printf("find start. cumulated_distance: %f\n", temp_distance);
+
+    // find race end point
+    float prev_time = -100.0, cur_time;
+    while(1)
+    {
+        fgets(line_dis, 1000, dis);
+        fgets(line_time, 1000, lap_time);
+        tok = strtok(line_time, " \t\n");
+        race_end_time = atof(tok);        // time in simulator (not in torcs)
+        tok = strtok(NULL, " \t\n");        // lateral distance
+        cur_time = atof(tok);               // cur time in torcs
+        if(prev_time == cur_time)               // race ended
+            break;
+        tok = strtok(line_dis, " \t\n");
+        tok = strtok(NULL, " \t\n");        // lateral distance
+        temp_distance = atof(tok);
+        cumulated_distance += fabs(temp_distance);
+//        printf("temp_distance: %f, cumulated_distance: %f\n", temp_distance, cumulated_distance);
+        prev_time = cur_time;
+    }
+    final_lap_time = cur_time;
+//    printf("find end\n");
+
+//    printf("race start: %f, end: %f, cumulated_distance: %f\n", race_start_time, race_end_time, cumulated_distance);
+    // calculate average distance
+    float avg_distance = cumulated_distance/(float)((int)((race_end_time-race_start_time)/0.1));
+
+    // calculate score
+    score = 3.0/(float)num_resources + 150.0/final_lap_time + 6.0/avg_distance;
+
+	sprintf(file_name, "%sscore.txt", LOCATION);
+	FILE *score_file = fopen(file_name, "w");
+	fprintf(score_file, "# of ECUs: %d, lap time: %f sec, average distance: %f m\n",num_resources, final_lap_time, avg_distance);
+	fprintf(score_file, "score: %f\n", score);
+	fclose(score_file);
+	fclose(dis);
+	fclose(lap_time);
 }

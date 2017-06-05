@@ -28,7 +28,7 @@
 #define PREEMPTABLE 1
 
 enum {START, COMPLETE, RESUMED};
-enum {RM, DM, EDF, CPS};	// for scheduling policy
+enum {RM, DM, EDF, CPS, CUSTOM};	// for scheduling policy
 
 using namespace std;
 
