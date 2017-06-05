@@ -92,6 +92,11 @@ Scheduler::Scheduler(int policy_input, int preempt_input, Resource *resource)
 		p_standard = 1;
 		componentizing = 1;
 	}
+    else if(policy_input == CUSTOM)
+    {
+        p_policy = 0;
+        p_standard = 0;
+    }
 	current_time = 0;
 	resource_link = resource;
 	resource->scheduler_link = this;
