@@ -63,19 +63,20 @@ void DesignParser::parseECUs(xmlDocPtr doc, xmlNodePtr cur) {
 	int cnt=0;
 	cur = cur->xmlChildrenNode;
 	while(cur != NULL) {
-		char id[100], v[5];
+		char id[100], v[5], sched_policy[10];
 		if((!xmlStrcmp(cur->name, (const xmlChar*)"ECU"))) {
 			bool isVirtual = false;
 
 			getCharProp(cur, "ID", id);
 			getCharProp(cur, "Virtual", v);
+			getCharProp(cur, "schedPolicy", sched_policy);
 
 			if(strncmp(v, "1", 1) == 0) isVirtual = true;
 			if(isVirtual) {
 				ecumap.insert(make_pair(id, ecumap.size()));
 				fprintf(fp, "Resource *r%d = new Resource(%d, 1, 100, 100, \"%s\");\n", cnt, cnt, id);
 				fprintf(fp, "resources.push_back(r%d);\n", cnt);
-				fprintf(fp, "Scheduler *s%d = new Scheduler(1, 1, r%d);\n", cnt, cnt);
+				fprintf(fp, "Scheduler *s%d = new Scheduler(%s, 1, r%d);\n", cnt, sched_policy, cnt);
 				cnt++;
 			}
 		}
@@ -94,7 +95,7 @@ void DesignParser::parseSWCs(xmlDocPtr doc, xmlNodePtr cur) {
 	int cnt=0;
 	int swcidx = 0;
 	while(cur != NULL) {
-		char id[100], period[10], wcet[10], ecuid[100], v[5], sendto[100];
+		char id[100], period[10], wcet[10], deadline[10], phase[10], ecuid[100], v[5], sendto[100];
 		if((!xmlStrcmp(cur->name, (const xmlChar*)"SWC"))) {
 			xmlNodePtr lcur = cur->xmlChildrenNode;
 			while(lcur != NULL) {
@@ -107,8 +108,10 @@ void DesignParser::parseSWCs(xmlDocPtr doc, xmlNodePtr cur) {
 			bool isVirtual = false;
 			
 			getCharProp(cur, "ID", id);
-			getCharProp(cur, "deadline", period);	// period
-			getCharProp(cur, "phase", wcet);		// WCET
+			getCharProp(cur, "deadline", deadline);	// dealine
+			getCharProp(cur, "period", period);     // period
+			getCharProp(cur, "WCET", wcet);		// WCET
+			getCharProp(cur, "phase", phase);   // phase
 			getCharProp(cur, "Virtual", v);
 			getCharProp(cur, "sendto", sendto);     // sendto
 			strcpy(task_id[swcidx], id);
@@ -118,7 +121,7 @@ void DesignParser::parseSWCs(xmlDocPtr doc, xmlNodePtr cur) {
 			if(isVirtual) {
 				int ecuidx = getEcuIdx(ecuid);
 				if(ecuidx >= 0) {
-					fprintf(fp, "Task_info *t%d = new Task_info(%d, 0, %s000, %s000, %d, 0, 1, 1, 1, %s000, -1, \"%s\", s%d);\n", swcidx, swcidx, period, wcet, atoi(wcet)/5*1000, period, id, ecuidx);
+					fprintf(fp, "Task_info *t%d = new Task_info(%d, 0, %d, %d, %d, %d, 1, 1, 1, %d, -1, \"%s\", s%d);\n", swcidx, swcidx, atoi(period)*1000, atoi(wcet)*1000, atoi(wcet)/5*1000, atoi(phase)*1000, atoi(deadline)*1000, id, ecuidx);
 					fprintf(fp, "whole_tasks.push_back(t%d);\n", swcidx);
 					swcidx++;
 					num_tasks++;
