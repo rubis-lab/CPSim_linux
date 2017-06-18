@@ -125,6 +125,21 @@ int main(int argc, char* argv[])
 		// (1) pick a job in the simulation ready queue
 		execution->cur_time = getcurrenttime();
 		Node *cur_node = execution->get_the_first_node();
+		int is_new_job = 1;
+		if(cur_node != NULL)
+		{
+			list<Node*>::iterator pos;
+			for(pos = running_tasks.begin(); pos != running_tasks.end(); pos++)
+			{
+				if((*pos) == cur_node)		// already executing
+				{
+					is_new_job = 0;
+					break;
+				}
+			}
+			if(is_new_job == 0)				// if cur_node is being executed, do nothing
+				continue;
+		}
 
 		// execute the job if its deadline is enough early
 		list<Node*>::iterator pos;
@@ -141,14 +156,14 @@ int main(int argc, char* argv[])
 				}
 			}
 
-			if(min_deadline > cur_node->effective_deadline)		// this job can start
+			if(min_deadline > cur_node->effective_deadline)		// this job (cur_node) can start
 			{
 				int running_task_id = cur_node->task->id;
 				task_finish_times[running_task_id] = 0;
 				running_tasks.push_back(cur_node);
 
 				// set the thread priority */
-				int prio = max_priority+1;;
+				int prio = max_priority+1;
 				schedParam.sched_priority = prio;
 				thread_priority[running_task_id] = prio;
 				if (pthread_attr_setschedparam(&attr, &schedParam))
