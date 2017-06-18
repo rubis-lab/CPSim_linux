@@ -47,6 +47,9 @@ list<Node*> running_tasks;
 // for checking thread priority
 vector<int> thread_priority;
 
+// for storing thread id
+vector<pthread_t> thread_id;
+
 // for infinite looping
 int loop_condition = 1;
 
@@ -62,6 +65,8 @@ void* receive_CAN_thread(void *arg);
 void try_send_data_via_can();
 void program_complete();
 int calculate_hyper_period(unsigned int start_index, unsigned int size);
+int get_task_index_earliest_effective_deadline();
+int get_task_index_highest_thread_priority();
 
 // main function
 int main(int argc, char* argv[])
@@ -178,6 +183,7 @@ int main(int argc, char* argv[])
 						printf("Failed to create task thread\n");
 						exit(1);
 				}
+				thread_id[running_task_id] = taskThread;
 			}
 		}
 
@@ -189,7 +195,7 @@ int main(int argc, char* argv[])
 			{
 				cur_node = (*pos);
 
-				thread_priority[cur_node->task->id] = 0;
+				thread_priority[cur_node->task->id] = 1;
 				
 				// get actual execution times
 				int task_id = (*pos)->task->id;
@@ -266,7 +272,22 @@ int main(int argc, char* argv[])
 				if((*pos)->predecessors.empty())
 					execution->ready_queue.push_back(*pos);
 			}
+
+			// reassign thread id based on current effective deadlines for resuming jobs
+			if(!running_tasks.empty())
+			{
+				int task_index_deadline = get_task_index_earliest_effective_deadline();
+				int task_index_priority = get_task_index_highest_thread_priority();
+				if(task_index_deadline != task_index_priority)		// we have to reassign the thread priority
+				{
+					thread_priority[task_index_deadline] = thread_priority[task_index_priority]+1;
+					struct sched_param params_temp;
+ 					params_temp.sched_priority = thread_priority[task_index_deadline];
+					pthread_setschedparam(thread_id[task_index_deadline], SCHED_FIFO, &params);
+				}
+			}
 		}
+
 		// try sending data
 		try_send_data_via_can();
 	}
@@ -291,7 +312,8 @@ void initialize()
 	{
 		task_start_times.push_back(0);
 		task_finish_times.push_back(0);
-		thread_priority.push_back(0);
+		thread_priority.push_back(1);
+		thread_id.push_back(1);
 	}
 
 	int hyper_period = calculate_hyper_period(0, whole_tasks.size());
@@ -493,3 +515,40 @@ int calculate_hyper_period(unsigned int start_index, unsigned int size)
 	return lcm*1000;
 }
 
+/* This function gets a task index who has the ealiest effective deadline in 'running_tasks' list.
+ */
+int get_task_index_earliest_effective_deadline()
+{
+	int task_index = -1;
+	int min_deadline = MAX_INT;
+	list<Node*>::iterator pos;
+	for(pos = running_tasks.begin(); pos != running_tasks.end(); pos++)
+	{
+		if((*pos)->effective_deadline < min_deadline)
+		{
+			min_deadline = (*pos)->effective_deadline;
+			task_index = (*pos)->task->id;
+		}
+	}
+	
+	return task_index;
+}
+
+/* This function gets a task index who has the highest thread priority in 'running_tasks' list.
+ */
+int get_task_index_highest_thread_priority()
+{
+	int task_index = -1;
+	int max_priority = 0;
+	list<Node*>::iterator pos;
+	for(pos = running_tasks.begin(); pos != running_tasks.end(); pos++)
+	{
+		if(thread_priority[(*pos)->task->id] > max_priority)
+		{
+			max_priority = thread_priority[(*pos)->task->id];
+			task_index = (*pos)->task->id;
+		}
+	}
+	
+	return task_index;
+}
