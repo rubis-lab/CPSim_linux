@@ -25,13 +25,4 @@ code:
         accel = 0.2;
     else
         accel = brake;
-
-//    if(speed < 50.0) // 50?
-//        accel = 1.5;
-//    else if(speed < 60.0) // 60
-//        accel = 0.5;
-//    else if(speed < 80.0) // 80
-//        accel = 0.2;
-//    else
-//        accel = brake;
 }
