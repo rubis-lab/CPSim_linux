@@ -43,48 +43,51 @@ code:
 		steering = 0.0;
 	}else {
 		if (distance * angle > 0) {
-			// angle to center
+			/* angle to center */
 			if (distance < 0.7 && distance > -0.7) {
+				/* close to the center */
 				if (distance < 0) {
+					/* left turning optimization */
 					steering = -0.2 * angle - 0.8*distance/track_width;
 				} else {
 					steering = 1.9 * angle - 0.6*distance/track_width;
 				}
-
+				/* debug */
 				tmp = int(steering * 1000000);
 				tmp = tmp % 1000;
 				tail = float(tmp) / 1000000;
-//				steering = steering > 0 ? steering - tail + 0.000050 : steering - tail - 0.000055;
+				steering = steering > 0 ? steering - tail + 0.000050 : steering - tail - 0.000055;
 			} else {
+				/* far away center */
 				steering = 1.7 * angle - 2.6*distance/track_width;
-
+				/* debug */
 				tmp = int(steering * 1000000);
 				tmp = tmp % 1000;
 				tail = float(tmp) / 1000000;
-//				steering = steering > 0 ? steering - tail + 0.000010 : steering - tail - 0.000015;
+				steering = steering > 0 ? steering - tail + 0.000010 : steering - tail - 0.000015;
 			}
 		} else {
 			float d_offset = 0.39;
-			float r_rate = 1.0;
-			// angle reverse to center
+			/* angle reverse to center */
 			if (distance < 0.16 && distance > -0.16) {
+				/* use linear offset */
 				if (distance < 0) {
 					d_offset = 2.5 * (-distance);
 				} else {
 					d_offset = 2.5 * (distance);
 				}
 			}
-
+			/* set steering */
 			if (angle > 0 && distance < 0) {// 2.3 3.8
-				steering = 2.3 * (angle * r_rate) - 4.05 * (distance - d_offset)/track_width;
+				steering = 2.3 * angle - 4.05 * (distance - d_offset)/track_width;
 			} else  {
-				steering = 2.3 * (angle * r_rate) - 3.99 * (distance + d_offset)/track_width;
+				steering = 2.3 * angle - 3.99 * (distance + d_offset)/track_width;
 			}
-
+			/* debug */
 			tmp = int(steering * 1000000);
 			tmp = tmp % 1000;
 			tail = float(tmp) / 1000000;
-//			steering = steering > 0 ? steering - tail + 0.000020 : steering - tail - 0.000025;
+			steering = steering > 0 ? steering - tail + 0.000020 : steering - tail - 0.000025;
 		}
 
 //		steering = 3.23232323;
