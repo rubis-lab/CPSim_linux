@@ -4,7 +4,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <signal.h>
-#include <algorithm>
 
 char LOCATION[1000];
 
