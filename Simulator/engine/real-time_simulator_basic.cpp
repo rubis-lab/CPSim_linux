@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <signal.h>
+#include <algorithm>
 
 char LOCATION[1000];
 
@@ -730,6 +731,7 @@ void calculate_score()
 
     // find race end point
     float prev_time = -100.0, cur_time;
+    int end_counter = 0;
     while(1)
     {
         fgets(line_dis, 1000, dis);
@@ -738,8 +740,14 @@ void calculate_score()
         race_end_time = atof(tok);        // time in simulator (not in torcs)
         tok = strtok(NULL, " \t\n");        // lateral distance
         cur_time = atof(tok);               // cur time in torcs
-        if(prev_time == cur_time)               // race ended
-            break;
+        if(prev_time == cur_time) {              // race ended
+            end_counter++;
+            if (end_counter >= 5) {
+                break;
+            }
+        } else {
+            end_counter = 0;
+        }
         tok = strtok(line_dis, " \t\n");
         tok = strtok(NULL, " \t\n");        // lateral distance
         temp_distance = atof(tok);
@@ -755,7 +763,10 @@ void calculate_score()
     float avg_distance = cumulated_distance/(float)((int)((race_end_time-race_start_time)/0.1));
 
     // calculate score
-    score = 3.0/(float)num_resources + 150.0/final_lap_time + 6.0/avg_distance;
+    float score_by_resources = 20.0 + (10.0 / pow((num_resources - 1), 0.25));
+    float score_by_lap_time = 40.0 * pow((max(0.0, 1.0 - final_lap_time / 200.0)), 2.0) + min(0.0, 200.0 - final_lap_time);
+    float score_by_avg_distance = 30.0 / pow((1.0 + avg_distance), 2.0);
+    score = score_by_resources + score_by_lap_time + score_by_avg_distance;
 
 	sprintf(file_name, "%sscore.txt", LOCATION);
 	FILE *score_file = fopen(file_name, "w");

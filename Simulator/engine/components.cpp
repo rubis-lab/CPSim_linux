@@ -25,4 +25,3 @@ void Component::set_id(int input)
 {
 	id = input;
 }
-

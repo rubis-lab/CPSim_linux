@@ -32,9 +32,9 @@ title=Steering Value
 filename=steering.txt
 label=steering
 unit=rad
-minY=-2.0
-maxY=2.0
-tickUnit=1.0
+minY=-1.0
+maxY=1.0
+tickUnit=0.5
 xRange=20.0
 dataNum=1
 Steering Value
@@ -51,3 +51,4 @@ xRange=20.0
 dataNum=1
 Distance
 visible=1
+>>>>>>> add Simulator dir
