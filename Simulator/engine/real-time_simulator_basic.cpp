@@ -18,7 +18,6 @@ int current_time = 0;		// simulation time (us)
 timeval reference_time;
 timeval now;				// real time
 
-
 // for internal data
 float memory_buffer[10];
 float user_input_internal[10];
