@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><hyundaiDesignTool>
+    <CANs>
+        <CAN ID="CAN0" bandwidth="0" type="CAN">
+            <link rid="CAR" type="CAR"/>
+            <link rid="ECU0" type="ECU"/>
+            <link rid="ECU1" type="ECU"/>
+            <link rid="ECU2" type="ECU"/>
+        </CAN>
+    </CANs>
+    <CAR ID="CAR">
+        <link rid="CAN0" type="CAN"/>
+    </CAR>
+    <SWCs>
+        <SWC ID="CC1" Virtual="1" WCET="20" deadline="200" period="200" phase="0" sendto="CC2">
+            <link idxCore="0" rid="ECU0" type="ECU"/>
+        </SWC>
+        <SWC ID="LK1" Virtual="1" WCET="30" deadline="198" period="200" phase="0" sendto="LK3">
+            <link idxCore="0" rid="ECU1" type="ECU"/>
+        </SWC>
+        <SWC ID="CC2" Virtual="1" WCET="50" deadline="200" period="200" phase="0" sendto="">
+            <link idxCore="0" rid="ECU0" type="ECU"/>
+        </SWC>
+        <SWC ID="LK2" Virtual="1" WCET="50" deadline="199" period="200" phase="0" sendto="LK3">
+            <link idxCore="0" rid="ECU1" type="ECU"/>
+        </SWC>
+        <SWC ID="other1" Virtual="1" WCET="10" deadline="50" period="50" phase="0" sendto="">
+            <link idxCore="0" rid="ECU0" type="ECU"/>
+        </SWC>
+        <SWC ID="other2" Virtual="1" WCET="10" deadline="80" period="80" phase="0" sendto="">
+            <link idxCore="0" rid="ECU0" type="ECU"/>
+        </SWC>
+        <SWC ID="other3" Virtual="1" WCET="20" deadline="100" period="100" phase="0" sendto="">
+            <link idxCore="0" rid="ECU0" type="ECU"/>
+        </SWC>
+        <SWC ID="LK3" Virtual="1" WCET="120" deadline="200" period="200" phase="0" sendto="">
+            <link idxCore="0" rid="ECU1" type="ECU"/>
+        </SWC>
+    </SWCs>
+    <ECUs>
+        <ECU ID="ECU0" Virtual="1" numCores="1" schedPolicy="EDF" sysClock="0" targetArch="SPC56EL70">
+            <link idxCore="0" rid="CC1" type="SWC"/>
+            <link idxCore="0" rid="CC2" type="SWC"/>
+            <link idxCore="0" rid="other1" type="SWC"/>
+            <link idxCore="0" rid="other2" type="SWC"/>
+            <link idxCore="0" rid="other3" type="SWC"/>
+            <link rid="CAN0" type="CAN"/>
+        </ECU>
+        <ECU ID="ECU1" Virtual="1" numCores="1" schedPolicy="RM" sysClock="0" targetArch="SPC56EL70">
+            <link idxCore="0" rid="LK2" type="SWC"/>
+            <link idxCore="0" rid="LK3" type="SWC"/>
+            <link idxCore="0" rid="LK1" type="SWC"/>
+            <link rid="CAN0" type="CAN"/>
+        </ECU>
+        <ECU ID="ECU2" Virtual="0" numCores="1" schedPolicy="RM" sysClock="0" targetArch="SPC56EL70">
+            <link rid="CAN0" type="CAN"/>
+        </ECU>
+    </ECUs>
+</hyundaiDesignTool>
