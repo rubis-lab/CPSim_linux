@@ -207,7 +207,7 @@ void DesignParser::generateTaskCode()
 		fprintf(ofp_task_created_h, "public:\n");		// public
 		fprintf(ofp_task_created_h, "\tTask%d();\n\tTask%d(Task_info*);\n\t~Task%d();\n\n",
 			t_id, t_id, t_id);
-		fprintf(ofp_task_created_h, "\tvirtual void procedure();\n\tvirtual void write();\n};\n\n");
+		fprintf(ofp_task_created_h, "\tvirtual float procedure(float previous_data);\n\tvirtual void write();\n};\n\n");
 
 		/*********************/
 		// for task_created.cpp
@@ -335,7 +335,7 @@ void DesignParser::generateTaskCode()
 			fgets(line_temp, 1000, ifp);
 
 		// for procedure() function
-		fprintf(ofp_task_created_c, "void Task%d::procedure()\n", t_id);
+		fprintf(ofp_task_created_c, "float Task%d::procedure(float previous_data)\n", t_id);
 		while(fgets(line_temp, 1000, ifp) != NULL)
 		{
 			fprintf(ofp_task_created_c, "%s", line_temp);
