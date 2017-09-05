@@ -16,6 +16,7 @@ Please refer to "user_manual.pdf" in the root directory.
 # License
 CPSim licensed under our commercial license agreement is appropriate for development of proprietary/commercial software where you do not want to share any source code with third parties or otherwise cannot comply with the terms of the ![GNU Lesser General Public License(LGPL) version 3](https://opensource.org/licenses/LGPL-3.0).
 
+If you want to use as commercial, cotact us(rubis.chief@gmail.com).
 
 # Reference
 [1] Kyoung-Soo We, Chang-Gun Lee, Junyung Lee, Kyuwon Kim, Kyongsu Yi, and Jong-Chan Kim, "ECU-in-the-Loop Real-Time Simulation Technique for Developing Integrated Vehicle Safety System", in International Conference on Control, Automation and Systems (ICCAS 2014), Gyeonggi-do, Korea, Oct 2014
