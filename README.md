@@ -14,7 +14,7 @@ Linux based PCs (Ubuntu 16.04 was tested).
 Please refer to "user_manual.pdf" in the root directory.
 
 # License
-CPSim licensed under our commercial license agreement is appropriate for development of proprietary/commercial software where you do not want to share any source code with third parties or otherwise cannot comply with the terms of the ![GNU Lesser General Public License(LGPL) version 3](https://opensource.org/licenses/LGPL-3.0).
+CPSim licensed under our commercial license agreement is appropriate for development of proprietary/commercial software where you do not want to share any source code with third parties or otherwise cannot comply with the terms of the [GNU Lesser General Public License version 3](https://opensource.org/licenses/LGPL-3.0).
 
 If you want to use as commercial, cotact us(rubis.chief@gmail.com).
 
