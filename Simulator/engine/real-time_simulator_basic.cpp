@@ -21,6 +21,8 @@ timeval now;				// real time
 // for internal data
 float memory_buffer[10];
 float user_input_internal[10];
+float previous_data[10];
+enum previous_data{CC1, CC2, LK1, LK2, LK3};
 
 // for sending data
 list<CAN_Msg *> waiting_data;
@@ -188,7 +190,18 @@ int main(int argc, char* argv[])
 				current_time_temp += next->task_link->get_modified_wcet();
 
 			// execute a task (job)
-			next->procedure();
+			if(strcmp("CC1", task_name) == 0)
+				previous_data[CC1] = next->procedure(previous_data[CC1]);
+			else if(strcmp("CC2", task_name) == 0)
+				previous_data[CC2] = next->procedure(previous_data[CC2]);
+			else if(strcmp("LK1", task_name) == 0)
+				previous_data[LK1] = next->procedure(previous_data[LK1]);
+			else if(strcmp("LK2", task_name) == 0)
+				previous_data[LK2] = next->procedure(previous_data[LK2]);
+			else if(strcmp("LK3", task_name) == 0)
+				previous_data[LK3] = next->procedure(previous_data[LK3]);
+			else	
+				next->procedure(0);
 			next->write();
 
 			// print seriaized schedule

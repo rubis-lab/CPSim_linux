@@ -269,7 +269,7 @@ public:
 	vector<Task*> predecessors;		// job level predecessor
 	vector<Task*> successors;		// job level successor
 
-	virtual void procedure() = 0;
+	virtual float procedure(float previous_data) = 0;
 	virtual void write() = 0;
 
 	int get_job_id();
