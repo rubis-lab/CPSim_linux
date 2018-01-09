@@ -5,8 +5,15 @@
   */
 #include <cstdio>
 
-int main(void)
+#include "CPSimTask.hpp"
+#include "CPSimECU.hpp"
+#include "CPSimCAN.hpp"
+
+int main(int argc, char* argv[])
 {
+  CPSimTask t;
+  CPSimECU e;
+  CPSimCAN c;
 
   return 0;
 }
