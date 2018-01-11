@@ -24,10 +24,10 @@ void CPSimECU::set_sched_policy (ECU_SCHED_POLICY _sched_policy) {
   this->__sched_policy = _sched_policy;
 }
 
-std::string       CPSimECU::get_name          (void) {
+std::string       CPSimECU::get_name          (void) const {
   return __name;
 }
 
-ECU_SCHED_POLICY  CPSimECU::get_sched_policy  (void) {
+ECU_SCHED_POLICY  CPSimECU::get_sched_policy  (void) const {
   return __sched_policy;
 }

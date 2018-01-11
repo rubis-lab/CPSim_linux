@@ -27,8 +27,8 @@ public:
   void set_name         (std::string _name);
   void set_sched_policy (ECU_SCHED_POLICY _sched_policy);
 
-  std::string       get_name          (void);
-  ECU_SCHED_POLICY  get_sched_policy  (void);
+  std::string       get_name          (void) const;
+  ECU_SCHED_POLICY  get_sched_policy  (void) const;
 };
 
 #endif

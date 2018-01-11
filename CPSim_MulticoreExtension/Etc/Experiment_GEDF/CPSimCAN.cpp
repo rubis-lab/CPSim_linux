@@ -17,7 +17,6 @@ void CPSimCAN::set_name(std::string _name) {
   this->__name = _name;
 }
 
-std::string CPSimCAN::get_name(void) {
+std::string CPSimCAN::get_name(void) const {
   return __name;
 }
-

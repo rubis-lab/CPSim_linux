@@ -39,13 +39,13 @@ public:
   void set_C_worst  (CPSimTime_t _C_worst);
   void set_M        (CPSimMappingFunction_t _M);
 
-  std::string             get_name    (void);
-  CPSimFunction_t         get_F       (void);
-  CPSimTime_t             get_Phi     (void);
-  CPSimTime_t             get_P       (void);
-  CPSimTime_t             get_C_best  (void);
-  CPSimTime_t             get_C_worst (void);
-  CPSimMappingFunction_t  get_M(void);
+  std::string             get_name    (void) const;
+  CPSimFunction_t         get_F       (void) const;
+  CPSimTime_t             get_Phi     (void) const;
+  CPSimTime_t             get_P       (void) const;
+  CPSimTime_t             get_C_best  (void) const;
+  CPSimTime_t             get_C_worst (void) const;
+  CPSimMappingFunction_t  get_M(void) const;
 };
 
 #endif

@@ -54,30 +54,30 @@ void CPSimTask::set_M        (CPSimMappingFunction_t _M) {
   this->__M = _M;
 }
 
-std::string             CPSimTask::get_name    (void) {
+std::string             CPSimTask::get_name    (void) const {
   return __name;
 }
 
-CPSimFunction_t         CPSimTask::get_F       (void) {
+CPSimFunction_t         CPSimTask::get_F       (void) const {
   return __F;
 }
 
-CPSimTime_t             CPSimTask::get_Phi     (void) {
+CPSimTime_t             CPSimTask::get_Phi     (void) const {
   return __Phi;
 }
 
-CPSimTime_t             CPSimTask::get_P       (void) {
+CPSimTime_t             CPSimTask::get_P       (void) const {
   return __P;
 }
 
-CPSimTime_t             CPSimTask::get_C_best  (void) {
+CPSimTime_t             CPSimTask::get_C_best  (void) const {
   return __C_best;
 }
 
-CPSimTime_t             CPSimTask::get_C_worst (void) {
+CPSimTime_t             CPSimTask::get_C_worst (void) const {
   return __C_worst;
 }
 
-CPSimMappingFunction_t  CPSimTask::get_M(void) {
+CPSimMappingFunction_t  CPSimTask::get_M(void) const {
   return __M;
 }

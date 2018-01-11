@@ -18,7 +18,7 @@ public:
 
   void set_name(std::string _name);
 
-  std::string get_name(void);
+  std::string get_name(void) const;
 };
 
 #endif
