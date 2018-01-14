@@ -149,3 +149,15 @@
 
 > CPSim_linux - kswe branch 코드 플로우 (for Slow & Quick)
 
+
+5. 결과
+
+
+1. 우선, Simulator 합치지 않은 상태에서 Quick하게 실험 코드 작성
+
+
+> Single-core에서 job preemption 있는 상황.
+
+
+> Multi-core에서 execution time mapping function 흔들리는 것 볼 수 있도록.
+
