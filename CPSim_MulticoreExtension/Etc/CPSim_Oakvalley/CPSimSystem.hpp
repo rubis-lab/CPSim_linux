@@ -33,6 +33,9 @@ private:
   std::set<CPSimECU*,   CompareComponentPtrLess<CPSimECU> >  __cpsim_ecus;
   std::set<CPSimCAN*,   CompareComponentPtrLess<CPSimCAN> >  __cpsim_cans;
 
+public:
+  ~CPSimSystem();
+
   bool addCPSimTask (CPSimTask* _cpsim_task);
   bool addCPSimECU  (CPSimECU* _cpsim_ecu);
   bool addCPSimCAN  (CPSimCAN* _cpsim_can);
@@ -41,10 +44,9 @@ private:
   CPSimECU*   getCPSimECU   (std::string _cpsim_ecu_name);
   CPSimCAN*   getCPSimCAN   (std::string _cpsim_can_name);
 
-public:
-  ~CPSimSystem();
-
-  bool readDesign(std::string _fname);
+  void runExperiment1(void);
+  void runExperiment2(void);
+  void runExperiment3(void);
 };
 
 #endif

@@ -5,7 +5,7 @@
   */
 #include <cstdio>
 
-#include "Error.hpp"
+#include "Logger.hpp"
 #include "CPSimSystem.hpp"
 
 bool CPSimSystem::addCPSimTask (CPSimTask* _cpsim_task) {
@@ -72,14 +72,4 @@ CPSimSystem::~CPSimSystem() {
 
     delete to_del;
   }
-}
-
-bool CPSimSystem::readDesign(std::string _fname) {
-  FILE* fp = fopen(_fname.c_str(), "r");
-  if (fp == NULL)
-  	Error::errorAndExit("@CPSimSystem::readDesign", "File open failed", _fname);
-
-
-
-  fclose(fp);
 }

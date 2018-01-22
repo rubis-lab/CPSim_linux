@@ -159,5 +159,7 @@
 > Single-core에서 job preemption 있는 상황.
 
 
-> Multi-core에서 execution time mapping function 흔들리는 것 볼 수 있도록.
+>> Multi-core에서 execution time mapping function 흔들리는 것 볼 수 있도록.
 
+
+2. 경수 형 3개 branch를 합치는 과정을 할 예정.
